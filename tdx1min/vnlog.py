@@ -9,6 +9,7 @@ from queue import Empty, Queue
 from threading import Thread
 from typing import Any, Dict
 
+from tdx1min.tdx_cfg import WORK_DIR
 
 SETTINGS: Dict[str, Any] = {
     "log.active": True,
@@ -19,14 +20,7 @@ SETTINGS: Dict[str, Any] = {
 
 
 def get_logs_path():
-    pth = Path.cwd()
-    tmp = str(pth)
-    idx = tmp.find("pytdx")
-    if idx < 0:
-        fp = tmp
-    else:
-        fp = tmp[0:idx + len("pytdx")]
-    folder_path = Path(fp)
+    folder_path = Path(WORK_DIR)
     folder_path = folder_path.joinpath("logs")
     if not folder_path.exists():
         folder_path.mkdir()

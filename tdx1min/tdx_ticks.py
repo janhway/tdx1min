@@ -4,11 +4,14 @@ import time
 
 from pytdx.hq import TdxHq_API
 
+from tdx1min.tdx_cfg import rand_hq_host
 from tdx1min.vnlog import logi, logd, loge
 from tdx1min.db_ticks import TdxTick, crt_ticks
 from tdx1min.trade_calendar import now_is_tradedate, CHINA_TZ
 
-HOST = "110.41.147.114"
+# HOST = "110.41.147.114"
+_hq_host = rand_hq_host('深圳')
+logi("HQ HOST={}".format(_hq_host))
 
 
 def read_cfg():
@@ -116,7 +119,7 @@ def tdx_tick():
     ticks = []
 
     api = TdxHq_API(auto_retry=True, heartbeat=True)
-    with api.connect(ip=HOST, port=7709, time_out=60):
+    with api.connect(ip=_hq_host['IPAddress'], port=int(_hq_host['Port']), time_out=60):
         while True:
             now = datetime.datetime.now()
             exp = []

@@ -173,3 +173,4 @@ ENV/
 
 *.c
 .pytest_cache/
+.workdir/

@@ -5,6 +5,7 @@ from pathlib import Path
 from sqlalchemy import create_engine, Column, Integer, Text, Float, Index
 from sqlalchemy.orm import sessionmaker, declarative_base
 
+from tdx1min.tdx_cfg import WORK_DIR
 from tdx1min.vnlog import logi
 
 
@@ -14,14 +15,7 @@ def cur_timestamp_ms():
 
 
 def get_db_tick_path():
-    pth = Path.cwd()
-    tmp = str(pth)
-    idx = tmp.find("pytdx")
-    if idx < 0:
-        fp = tmp
-    else:
-        fp = tmp[0:idx + len("pytdx")]
-    folder_path = Path(fp)
+    folder_path = Path(WORK_DIR)
     folder_path = folder_path.joinpath("db")
     if not folder_path.exists():
         folder_path.mkdir()
