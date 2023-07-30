@@ -64,6 +64,19 @@ class TdxTick(Base):
     index_time_code = Index('idx_time_code', time, code)
 
 
+class Bar1Min(Base):
+    __tablename__ = 'bar_1min'
+
+    id = Column(Integer, primary_key=True)
+    code = Column(Text(8))
+    time = Column(Text(8))
+    open = Column(Text(10))
+    close = Column(Text(10))
+    created = Column(Integer, default=cur_timestamp_ms)
+
+    index_time_code = Index('idx_bar_time_code', time, code)
+
+
 # # 获取模型类的所有列
 # _tick_columns = XtTick.__table__.columns
 #
@@ -74,6 +87,12 @@ class TdxTick(Base):
 def crt_ticks(ticks):
     with Session() as session:
         session.add_all(ticks)
+        session.commit()
+
+
+def crt_bar1min(bars):
+    with Session() as session:
+        session.add_all(bars)
         session.commit()
 
 
