@@ -1,10 +1,14 @@
+import os
 import random
 from pathlib import Path
+
+
 from typing import Tuple
 
 
 def _tdx_hq_host(position: str = None) -> dict:
-    file = r'E:\chenzhenwei\PycharmProjects\quant\tdx1min\tdx1min\connect.cfg'
+    file = os.path.dirname(__file__)
+    file = os.path.join(file, 'connect.cfg')
 
     hq_hosts: dict = {}
 

@@ -1,4 +1,5 @@
 import datetime
+import os
 import random
 import time
 
@@ -15,7 +16,8 @@ logi("HQ HOST={}".format(_hq_host))
 
 
 def read_cfg():
-    path = r'E:\chenzhenwei\PycharmProjects\quant\pytdx\tst\Actvty_cfg.csv'
+    path = os.path.dirname(__file__)
+    path = os.path.join(path, 'Actvty_cfg.csv')
 
     codes = []
     with open(path, "r") as fp:

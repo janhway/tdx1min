@@ -101,6 +101,6 @@ if __name__ == '__main__':
     # ss = read_stocks()
     # print(len(ss),ss)
     # read_cfg()
-    # tst_tdx()
+    tst_tdx()
     # tst_tdx02()
     pass
