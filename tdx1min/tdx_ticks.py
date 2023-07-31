@@ -6,7 +6,7 @@ import time
 from pytdx.hq import TdxHq_API
 
 from tdx1min.tdx_cfg import rand_hq_host
-from tdx1min.vnlog import logi, logd, loge
+from tdx1min.vnlog import logi, logd, loge, logw
 from tdx1min.db_ticks import TdxTick, crt_ticks, Bar1Min, crt_bar1min
 from tdx1min.trade_calendar import now_is_tradedate, CHINA_TZ
 
@@ -36,28 +36,24 @@ def read_cfg():
 def get_query_timer():
     timer_list = []
 
+    ts = []
+    ts.extend([0, 1.5])
+    for i in range(3, 59, 3):  # [3,57]
+        ts.append(i)
+    ts.append(57 + 1.5)
+    print(len(ts), ts)
+
     tnow = datetime.datetime.now()
     logi("now={}".format(tnow))
     tn = float(tnow.second) + float(tnow.microsecond) / 1000000.0
-    if tn < 1:
-        deltas = [1, 2, 58, 59, 60]
-    elif tn < 2:
-        deltas = [2, 58, 59, 60, 61]
-    elif tn < 58:
-        deltas = [58, 59, 60, 61, 62]
-    elif tn < 59:
-        deltas = [59, 60, 61, 62, 60 + 58]
-    else:
-        deltas = [60, 61, 62, 60 + 58, 60 + 59]
 
-    for d in deltas:
-        if d < 60:
-            t = datetime.datetime(year=tnow.year, month=tnow.month, day=tnow.day,
-                                  hour=tnow.hour, minute=tnow.minute, second=d, microsecond=0)
-        else:
-            tmp = tnow + datetime.timedelta(minutes=1)
-            t = datetime.datetime(year=tmp.year, month=tmp.month, day=tmp.day,
-                                  hour=tmp.hour, minute=tmp.minute, second=d % 60, microsecond=0)
+    for d in ts:
+        sec = int(d)
+        micro_sec = 0
+        if not isinstance(d, int):
+            micro_sec = int((float(d) - int(d)) * 1000000)
+        t = datetime.datetime(year=tnow.year, month=tnow.month, day=tnow.day,
+                              hour=tnow.hour, minute=tnow.minute, second=sec, microsecond=micro_sec)
         timer_list.append(t)
         logi("add start timer={}".format(t))
     return timer_list
@@ -87,17 +83,22 @@ def query_ticks(api, ss) -> dict:
         if stocks:
             logd("{} stock quotes num={}".format(i, len(stocks)))
             for s in stocks:
-                slot = s['servertime'][0:5]
+                slot = s['servertime'][0:5] if s['servertime'][0] != '9' else s['servertime'][0:4]
                 code = s['code']
                 if slot not in ticks_map:
                     ticks_map[slot] = {}
 
-                ticks_map[slot][code] = {"servertime":s['servertime'], "price":s['price']}
+                ticks_map[slot][code] = {"servertime": s['servertime'], "price": s['price']}
+            if i == 1040:
+                logd("i={} stocks={}".format(i, stocks))
         else:
             loge("{} failed".format(i))
         # print(stocks)
-    spent = time.time() - start
-    logi("got #{} ticks from tdx. spent time={} start time={}".format(len(ticks_map.keys()), spent, now))
+    spent = round(time.time() - start, 3)
+    logi("got #{} slot from tdx. spent time={} start time={} \n slot={} \ndetail={}"
+         .format(len(ticks_map.keys()), spent, now, ticks_map.keys(), ticks_map))
+    if spent >= 1.:
+        logw("query tick spent too many time {}".format(spent))
     return ticks_map
 
 
@@ -141,8 +142,8 @@ def tdx_tick():
                 que.append(t + datetime.timedelta(minutes=1))
             # if not need_query():
             #     continue
-
             ticks_tmp = query_ticks(api, ss)
+            start = time.time()
             for slot in ticks_tmp:
                 if slot not in one_min_map:
                     one_min_map[slot] = {}
@@ -151,12 +152,15 @@ def tdx_tick():
                         one_min_map[slot][code] = [ticks_tmp[slot][code]['price'], ticks_tmp[slot][code]['price']]
                     else:
                         one_min_map[slot][code][1] = ticks_tmp[slot][code]['price']
-            logi("end query. now={} expire_timer={}".format(datetime.datetime.now(), exp))
+            spent = round(time.time() - start, 3)
+            logi("end query. spent={} now={} expire_timer={}".format(spent, datetime.datetime.now(), exp))
+            if spent >= 1:
+                logw("merge spent too much time {}".spent)
             if len(exp) > 1:
                 loge("miss some query. exp={}".format(exp))
             last = exp[len(exp) - 1]
 
-            if last.second == 2:
+            if last.second == 3 and last.microsecond == 0:
                 start = time.time()
                 cur_slot_x = datetime.datetime(year=1900, month=1, day=1,
                                                hour=last.hour, minute=last.minute, second=0, microsecond=0)
@@ -164,16 +168,15 @@ def tdx_tick():
                 last_slot = last_slot_x.strftime("%H:%M")
                 bars = []
                 if last_slot in one_min_map:
-                    for market,code in ss:
+                    for market, code in ss:
                         if code in one_min_map[last_slot]:
                             open_close = one_min_map[last_slot][code]
-                            bars.append(Bar1Min(time=last_slot, code=code, open=open_close[0],close=open_close[1]))
+                            bars.append(Bar1Min(time=last_slot, code=code, open=open_close[0], close=open_close[1]))
                         else:
-                            pass
-                    del one_min_map[last_slot]
+                            logw("code {} has no slot {} in one_min_map".format(code, last_slot))
+                    # del one_min_map[last_slot]
                 else:
                     logi("no tick in slot {}".format(last_slot))
-                    pass
 
                 if bars:
                     logd("bars={}".format(bars))
@@ -181,8 +184,11 @@ def tdx_tick():
 
                 spent = round(time.time() - start, 3)
                 logi("save #{} bars to db spent {} seconds".format(len(bars), spent))
+                if spent >= 1.:
+                    logw("save db spent too many time {}".format(spent))
 
 
 if __name__ == '__main__':
+    # tst_get_query_timer()
     tdx_tick()
     pass

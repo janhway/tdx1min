@@ -74,6 +74,9 @@ class Bar1Min(Base):
     close = Column(Text(10))
     created = Column(Integer, default=cur_timestamp_ms)
 
+    def __repr__(self):
+        return str(self.code) + "_" + str(self.time) + "_" + str(self.open) + "_" + str(self.close)
+
     index_time_code = Index('idx_bar_time_code', time, code)
 
 

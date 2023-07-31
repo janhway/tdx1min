@@ -70,6 +70,8 @@ def query_ticks(api, ss):
                         # max_interval = diff_sec
                         max_microsecond = diff.microseconds
                         max_q = s
+            if i == 1600-800:
+                print(stocks)
 
         else:
             print("{} failed".format(i))
