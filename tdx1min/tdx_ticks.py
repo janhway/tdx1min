@@ -148,10 +148,13 @@ def tdx_tick():
                 if slot not in one_min_map:
                     one_min_map[slot] = {}
                 for code in ticks_tmp[slot]:
+                    tick_tmp_servertime = ticks_tmp[slot][code]['servertime']
+                    tick_tmp_price = ticks_tmp[slot][code]['price']
+                    tick_tmp_sp = (tick_tmp_servertime, tick_tmp_price)
                     if code not in one_min_map[slot]:
-                        one_min_map[slot][code] = [ticks_tmp[slot][code]['price'], ticks_tmp[slot][code]['price']]
+                        one_min_map[slot][code] = [tick_tmp_sp, tick_tmp_sp]
                     else:
-                        one_min_map[slot][code][1] = ticks_tmp[slot][code]['price']
+                        one_min_map[slot][code][1] = tick_tmp_sp
             spent = round(time.time() - start, 3)
             logi("end query. spent={} now={} expire_timer={}".format(spent, datetime.datetime.now(), exp))
             if spent >= 1:
@@ -171,7 +174,9 @@ def tdx_tick():
                     for market, code in ss:
                         if code in one_min_map[last_slot]:
                             open_close = one_min_map[last_slot][code]
-                            bars.append(Bar1Min(time=last_slot, code=code, open=open_close[0], close=open_close[1]))
+                            bars.append(Bar1Min(time=last_slot, code=code,
+                                                open_st=open_close[0][0], open=open_close[0][1],
+                                                close_st=open_close[1][0], close=open_close[1][1]))
                         else:
                             logw("code {} has no slot {} in one_min_map".format(code, last_slot))
                     # del one_min_map[last_slot]
