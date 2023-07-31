@@ -7,6 +7,7 @@ from pytdx.hq import TdxHq_API
 import pathlib
 
 from tdx1min.tdx_ticks import read_cfg, day_1min_slots, slot_from_servertime, cur_date, tst_find_info_from_prev_slot
+from tdx1min.vnlog import logi
 
 HOST = "110.41.147.114"
 
@@ -37,8 +38,12 @@ def tst_tdx01():
 def tst_tdx02():
     api = TdxHq_API()
     with api.connect(ip=HOST, port=7709, time_out=60):
-        data = api.get_security_bars(8, 0, '000001', 0, 10)
-        print(data)
+        while 1:
+            # data = api.get_security_bars(8, 1, '688567', 0, 3)
+            data = api.get_security_bars(8, 0, '003043', 0, 3)
+            for i,d in enumerate(data):
+                logi("#{} datetime={} open={} close={}".format(i,d['datetime'],d['open'],d['close']))
+            time.sleep(3)
 
 
 def query_ticks(api, ss):
@@ -104,10 +109,10 @@ if __name__ == '__main__':
     # print(len(ss),ss)
     # read_cfg()
     # tst_tdx()
-    # tst_tdx02()
+    tst_tdx02()
     # print(day_1min_slots())
     # print(slot_from_servertime('10:18:30.486'))
     # print(slot_from_servertime('9:18:30.486'))
     # print(cur_date())
-    tst_find_info_from_prev_slot()
+    # tst_find_info_from_prev_slot()
     pass

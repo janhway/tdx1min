@@ -204,6 +204,7 @@ def tdx_tick():
     que = get_query_timer()
 
     one_min_map = {}
+    instead_data = {}  # 可能停牌导致
     first_slot = None
     today_date = cur_date()
     api = TdxHq_API(auto_retry=True, heartbeat=True)
@@ -276,6 +277,27 @@ def tdx_tick():
                                 bars.append(Bar1Min(date=today_date, time=last_slot, code=code,
                                                     open_st=open_close[0][0], open=open_close[0][1],
                                                     close_st=open_close[1][0], close=open_close[1][1]))
+                            else:
+                                if code in instead_data:
+                                    b = instead_data[code]
+                                    b.time = last_slot
+                                    bars.append(b)
+                                else:
+                                    data = api.get_security_bars(8, market, code, 0, 1)
+                                    if data:
+                                        logi("code {} succeed to get data data={}".format(code, data))
+                                        # d['datetime'], d['open'], d['close']ar
+                                        d = data[0]
+                                        servertime = d['datetime'][12:17] + ":00"
+                                        actural_date = d['datetime'].replace("-","")[0:8]
+                                        b = Bar1Min(date=today_date, time=last_slot, code=code,
+                                                open_st=servertime, open=d['close'],
+                                                close_st=servertime, close=d['close'],
+                                                instead_date=actural_date)
+                                        instead_data[code] = b
+                                        bars.append(b)
+                                    else:
+                                        loge("code {} fail to get data by get_security_bars".format(code))
                     # del one_min_map[last_slot]
                 else:
                     logi("no tick in slot {}".format(last_slot))
