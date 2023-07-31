@@ -1,3 +1,4 @@
+import datetime
 import time
 
 from pathlib import Path
@@ -6,6 +7,7 @@ from sqlalchemy import create_engine, Column, Integer, Text, Float, Index
 from sqlalchemy.orm import sessionmaker, declarative_base
 
 from tdx1min.tdx_cfg import WORK_DIR
+from tdx1min.trade_calendar import CHINA_TZ
 from tdx1min.vnlog import logi
 
 
@@ -69,6 +71,7 @@ class Bar1Min(Base):
 
     id = Column(Integer, primary_key=True)
     code = Column(Text(8))
+    date = Column(Text(8))
     time = Column(Text(8))
     open = Column(Text(10))
     open_st = Column(Text(16)) # servertime
@@ -77,11 +80,11 @@ class Bar1Min(Base):
     created = Column(Integer, default=cur_timestamp_ms)
 
     def __repr__(self):
-        return str(self.code) + "_" + str(self.time)\
+        return str(self.code) + "_" + str(self.date) + "_" + str(self.time)\
                + "_" + str(self.open_st) + "_" + str(self.open)\
                + "_" + str(self.close_st) + "_" + str(self.close)
 
-    index_time_code = Index('idx_bar_time_code', time, code)
+    index_time_code = Index('idx_date_time_code', date, time, code)
 
 
 # # 获取模型类的所有列

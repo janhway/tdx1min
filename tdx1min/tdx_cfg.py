@@ -60,7 +60,7 @@ TDX_HQ_HOST = _tdx_hq_host()
 def rand_hq_host(position: str = None) -> dict:
     hosts_dict = _tdx_hq_host(position)
     hosts = [hosts_dict[k] for k in hosts_dict]
-    idx = random.randint(0, len(hosts) - 1)
+    idx = random.randint(0, len(hosts[0:3]) - 1)
     return hosts[idx]
 
 

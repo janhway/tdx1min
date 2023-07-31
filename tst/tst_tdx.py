@@ -6,7 +6,7 @@ from pytdx.hq import TdxHq_API
 
 import pathlib
 
-from tdx1min.tdx_ticks import read_cfg
+from tdx1min.tdx_ticks import read_cfg, day_1min_slots, slot_from_servertime, cur_date, tst_find_info_from_prev_slot
 
 HOST = "110.41.147.114"
 
@@ -103,6 +103,11 @@ if __name__ == '__main__':
     # ss = read_stocks()
     # print(len(ss),ss)
     # read_cfg()
-    tst_tdx()
+    # tst_tdx()
     # tst_tdx02()
+    # print(day_1min_slots())
+    # print(slot_from_servertime('10:18:30.486'))
+    # print(slot_from_servertime('9:18:30.486'))
+    # print(cur_date())
+    tst_find_info_from_prev_slot()
     pass

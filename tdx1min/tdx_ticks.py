@@ -72,6 +72,17 @@ def tst_get_query_timer():
         print(get_query_timer())
 
 
+def slot_from_servertime(servertime: str) -> str:
+    ridx = servertime.rfind(":")
+    if ridx >= 0:
+        tmp = servertime[0:ridx].replace(":", "")
+        if tmp[0] == '9':
+            tmp = "0" + tmp
+        return tmp
+    else:
+        return ""
+
+
 def query_ticks(api, ss) -> dict:
     now = datetime.datetime.now().time()
     start = time.time()
@@ -83,7 +94,8 @@ def query_ticks(api, ss) -> dict:
         if stocks:
             logd("{} stock quotes num={}".format(i, len(stocks)))
             for s in stocks:
-                slot = s['servertime'][0:5] if s['servertime'][0] != '9' else s['servertime'][0:4]
+                slot = slot_from_servertime(s['servertime'])
+                # s['servertime'][0:5] if s['servertime'][0] != '9' else s['servertime'][0:4]
                 code = s['code']
                 if slot not in ticks_map:
                     ticks_map[slot] = {}
@@ -107,9 +119,9 @@ def need_query():
         return False
 
     fstart = datetime.time(9, 24, 59, tzinfo=CHINA_TZ)
-    fend = datetime.time(11, 30, 3, tzinfo=CHINA_TZ)
+    fend = datetime.time(11, 30, 59, tzinfo=CHINA_TZ)
     sstart = datetime.time(12, 59, 59, tzinfo=CHINA_TZ)
-    send = datetime.time(15, 0, 3, tzinfo=CHINA_TZ)
+    send = datetime.time(15, 0, 59, tzinfo=CHINA_TZ)
 
     current_time = datetime.datetime.now(tz=CHINA_TZ).time()
     if (fstart <= current_time <= fend) or (sstart <= current_time <= send):
@@ -117,14 +129,83 @@ def need_query():
     return False
 
 
+def day_1min_slots():
+    fstart = datetime.time(9, 25, 0, tzinfo=CHINA_TZ)
+    fend = datetime.time(11, 30, 0, tzinfo=CHINA_TZ)
+    sstart = datetime.time(13, 0, 0, tzinfo=CHINA_TZ)
+    send = datetime.time(15, 0, 0, tzinfo=CHINA_TZ)
+
+    ret = []
+    start = datetime.datetime(year=1900, month=1, day=1,
+                              hour=fstart.hour, minute=fstart.minute, second=0, microsecond=0)
+    while start.time() < send:
+        if fstart <= start.time() < fend or sstart <= start.time() < send:
+            slot = start.strftime("%H%M")
+            ret.append(slot)
+        start = start + datetime.timedelta(minutes=1)
+    return ret
+
+
+def cur_date():
+    n = datetime.datetime.now(tz=CHINA_TZ)
+    return n.strftime("%Y%m%d")
+
+
+def find_info_from_prev_slot(cur_slot: str, code, one_min_map: dict):
+
+    keys = [k for k in one_min_map.keys()]
+    keys.sort(reverse=True)
+    # print("keys=", keys)
+
+    for slot in keys:
+        if cur_slot<=slot:
+            continue
+        if slot in one_min_map and code in one_min_map[slot]:
+            return one_min_map[slot][code]
+
+    return None
+
+
+def tst_find_info_from_prev_slot():
+    one_min_map={
+        "0945": {
+            "600036": [("", 1.35), ("", 1.36)],
+            "600030": [("", 2.35), ("", 2.36)],
+        },
+        "0946": {
+            "600036": [("", 11.35), ("", 11.36)],
+            "600030": [("", 12.35), ("", 12.36)],
+        },
+        "1301": {
+            "600036": [("", 21.35), ("", 21.36)],
+            "600030": [("", 22.35), ("", 22.36)],
+        }
+    }
+
+    cur_slot = "1300"
+    code = "600036"
+    r = find_info_from_prev_slot(cur_slot, code, one_min_map)
+    print(cur_slot, code, r)
+
+    cur_slot = "1250"
+    r = find_info_from_prev_slot(cur_slot, code, one_min_map)
+    print(cur_slot, code, r)
+
+    cur_slot = "0946"
+    r = find_info_from_prev_slot(cur_slot, code, one_min_map)
+    print(cur_slot, code, r)
+
+
 def tdx_tick():
     ss = read_cfg()
-    logi("stock num={}".format(len(ss)))
+    valid_slots = day_1min_slots()
+    logi("stock num={} valid_slots={}".format(len(ss), valid_slots))
 
     que = get_query_timer()
 
     one_min_map = {}
-
+    first_slot = None
+    today_date = cur_date()
     api = TdxHq_API(auto_retry=True, heartbeat=True)
     with api.connect(ip=_hq_host['IPAddress'], port=int(_hq_host['Port']), time_out=60):
         while True:
@@ -140,8 +221,10 @@ def tdx_tick():
             for t in exp:
                 que.remove(t)
                 que.append(t + datetime.timedelta(minutes=1))
-            # if not need_query():
-            #     continue
+
+            if not need_query():
+                continue
+
             ticks_tmp = query_ticks(api, ss)
             start = time.time()
             for slot in ticks_tmp:
@@ -168,17 +251,31 @@ def tdx_tick():
                 cur_slot_x = datetime.datetime(year=1900, month=1, day=1,
                                                hour=last.hour, minute=last.minute, second=0, microsecond=0)
                 last_slot_x = cur_slot_x - datetime.timedelta(minutes=1)
-                last_slot = last_slot_x.strftime("%H:%M")
+                last_slot = last_slot_x.strftime("%H%M")
+                if last_slot not in valid_slots:
+                    if not first_slot:
+                        first_slot = last_slot
+                    continue
+                elif not first_slot: # 忽略第一个不完整的slot
+                    first_slot = last_slot
+                    continue
+
                 bars = []
                 if last_slot in one_min_map:
                     for market, code in ss:
                         if code in one_min_map[last_slot]:
                             open_close = one_min_map[last_slot][code]
-                            bars.append(Bar1Min(time=last_slot, code=code,
+                            bars.append(Bar1Min(date=today_date, time=last_slot, code=code,
                                                 open_st=open_close[0][0], open=open_close[0][1],
                                                 close_st=open_close[1][0], close=open_close[1][1]))
                         else:
                             logw("code {} has no slot {} in one_min_map".format(code, last_slot))
+                            open_close = find_info_from_prev_slot(last_slot, code, one_min_map)
+                            if open_close:
+                                logd("code {} use {} instead".format(code, open_close))
+                                bars.append(Bar1Min(date=today_date, time=last_slot, code=code,
+                                                    open_st=open_close[0][0], open=open_close[0][1],
+                                                    close_st=open_close[1][0], close=open_close[1][1]))
                     # del one_min_map[last_slot]
                 else:
                     logi("no tick in slot {}".format(last_slot))
@@ -195,5 +292,6 @@ def tdx_tick():
 
 if __name__ == '__main__':
     # tst_get_query_timer()
+    # tst_find_info_from_prev_slot()
     tdx_tick()
     pass
