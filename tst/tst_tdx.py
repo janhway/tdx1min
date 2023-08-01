@@ -1,4 +1,5 @@
 import datetime
+import json
 import random
 import time
 
@@ -25,15 +26,29 @@ def read_stocks():
 def tst_tdx01():
     api = TdxHq_API()
     with api.connect(ip=HOST, port=7709, time_out=60):
-        sc = api.get_security_count(0)
-        print("sz security count={}".format(sc))
-        sc = api.get_security_count(1)
-        print("sh security count={}".format(sc))
-
-        stock_list = api.get_security_list(0, 0)  # 深市从0开始
-        print(len(stock_list), stock_list)
-        stock_list = api.get_security_list(1, 517)  # 沪市从517开始 ???
-        print(len(stock_list), stock_list)
+        # sc = api.get_security_count(0)
+        # print("sz security count={}".format(sc))
+        # sc = api.get_security_count(1)
+        # print("sh security count={}".format(sc))
+        #
+        # stock_list = api.get_security_list(0, 0)  # 深市从0开始
+        # print(len(stock_list), stock_list)
+        # stock_list = api.get_security_list(1, 517)  # 沪市从517开始 ???
+        # print(len(stock_list), stock_list)
+        while 1:
+            stocks = api.get_security_quotes([(1,'600036')])
+            for d in stocks:
+                # d = stocks[0]
+                now = datetime.datetime.now()
+                stx = datetime.datetime.strptime(d['servertime'], "%H:%M:%S.%f")
+                sty = datetime.datetime(year=now.year, month=now.month, day=now.day,
+                                        hour=stx.hour, minute=stx.minute,
+                                        second=stx.second, microsecond=stx.microsecond)
+                st = sty.timestamp()
+                diff = round(now.timestamp() - st, 3)
+                logi("now={} servertime={} difftime={} code={} price={} "
+                     .format(now.time(), d['servertime'], diff, d['code'], d['price']))
+            time.sleep(3)
 
 
 def tst_tdx02():
@@ -44,15 +59,17 @@ def tst_tdx02():
         while 1:
             # data = api.get_security_bars(8, 1, '688567', 0, 3)
             # data = api.get_security_bars(8, 0, '003043', 0, 2)
-            data = api.get_security_bars(8, mcodes[idx][0], mcodes[idx][1], 0, 2)
+            data = api.get_security_bars(8, 1, '603290', 0, 3)
+            # data = api.get_security_bars(8, mcodes[idx][0], mcodes[idx][1], 0, 2)
             # print(type(data))
+            # print(data)
             # data.reverse()
             idx += 1
             if idx >= len(mcodes):
                 idx = 0
-            for i,d in enumerate(data):
+            for i, d in enumerate(data):
                 logi("#{} code={} datetime={} open={} close={}"
-                     .format(i,mcodes[idx], d['datetime'],d['open'],d['close']))
+                     .format(i, mcodes[idx], d['datetime'], d['open'], d['close']))
             time.sleep(3)
 
 
@@ -85,7 +102,7 @@ def query_ticks(api, ss):
                         # max_interval = diff_sec
                         max_microsecond = diff.microseconds
                         max_q = s
-            if i == 1600-800:
+            if i == 1600 - 800:
                 print(stocks)
 
         else:
@@ -114,16 +131,54 @@ def tst_tdx():
         query_ticks(api, ss)
 
 
+def read_log():
+    file = r'C:\workdir\tombp\tdx1min\.workdir\logs\vt_20230801 - 副本.log'
+    code = '603290'
+    # code = '600620'
+    with open(file, 'r') as fp:
+        while 1:
+            line = fp.readline()
+            if not line:
+                break
+            idx = line.find('query_ticks 191 INFO')
+            if idx >= 0:
+                t = line[0:idx].strip()
+                line = fp.readline()  # 忽略stocks
+                line = fp.readline().strip()
+                assert line.startswith('detail=')
+                idx = line.find('detail=')
+                data = line[idx + len('detail='):]
+                # print(ticks_tmp)
+                data = data.replace("\'", "\"")
+                ticks_tmp: dict = json.loads(data)
+                # print(t,ticks_tmp)
+                print_time = datetime.datetime.strptime(t, "%Y-%m-%d %H:%M:%S,%f")
+                # print('=====',type(print_timex), print_timex, print_time)
+                pt: float = print_time.timestamp()
+                for slot in ticks_tmp:
+                    if code in ticks_tmp[slot]:
+                        stx = datetime.datetime.strptime(ticks_tmp[slot][code]['servertime'], "%H:%M:%S.%f")
+                        sty = datetime.datetime(year=print_time.year, month=print_time.month, day=print_time.day,
+                                                hour=stx.hour, minute=stx.minute,
+                                                second=stx.second, microsecond=stx.microsecond)
+                        st = sty.timestamp()
+                        diff = round(pt - st, 5)
+
+                        print(slot, code, t, ticks_tmp[slot][code], diff)
+
+
 if __name__ == '__main__':
     # ss = read_stocks()
     # print(len(ss),ss)
     # read_cfg()
     # tst_tdx()
-    tst_tdx02()
+    tst_tdx01()
+    # tst_tdx02()
     # print(day_1min_slots())
     # print(slot_from_servertime('10:18:30.486'))
     # print(slot_from_servertime('9:18:30.486'))
     # print(cur_date())
     # tst_find_info_from_prev_slot()
     # write_stg_price('0931', 11.3, 12.33333)
+    # read_log()
     pass
