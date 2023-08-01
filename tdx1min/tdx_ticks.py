@@ -24,9 +24,9 @@ class Bar1MinData(object):
     code: str
     date: str
     time: str
-    open: str
+    open: float
     open_st: str  # servertime
-    close: str
+    close: float
     close_st: str  # servertime
     fill_date: str = None
 
@@ -79,14 +79,14 @@ def cal_open_close(slot: str, pre_tmap: float,
     # 对stg_cfg列表中每个品种下一个交易日实盘的open_price,close_price,以及Ltg，分别求乘数Open_price*Ltg,close_price*Ltg,然后统计所有品种各乘数的累计值（汇总求和），由此计算出Stg指数的点位的open，close价格
     # Open = sum(open_price*Ltg)/Pretmap*net0
     # Close = sum(close_price*Ltg)/Pretmap*net0
-    open = 0.
-    close = 0.
+    open_price = 0.
+    close_price = 0.
     for code in cfg.keys():
-        open += float(one_min_map[slot][code].open) * cfg[code].Ltg
-        close += float(one_min_map[slot][code].close) * cfg[code].Ltg
-    open = open / pre_tmap * cfg[code].net0
-    close = close / pre_tmap * cfg[code].net0
-    return open, close
+        open_price += float(one_min_map[slot][code[2:]].open) * cfg[code].Ltg
+        close_price += float(one_min_map[slot][code[2:]].close) * cfg[code].Ltg
+    open_price = open_price / pre_tmap * cfg[code].net0
+    close_price = close_price / pre_tmap * cfg[code].net0
+    return open_price, close_price
 
 
 def get_stg_path():
@@ -317,7 +317,7 @@ def tdx_tick():
             if spent >= 1:
                 logw("update 1min bar spent too much time {}".format(spent))
 
-            if len(exp) > 1:
+            if len(exp) > 1 and first_slot:
                 loge("miss some query. exp={}".format(exp))
             last = exp[len(exp) - 1]
 
@@ -338,7 +338,8 @@ def tdx_tick():
                 # 填充缺少信息
                 start = time.time()
                 bars: List[Bar1MinData] = fill_slot_date(api, mcodes, one_min_map, last_slot)
-                assert (len(one_min_map[last_slot].keys()) == len(mcodes))
+                if last_slot in one_min_map:
+                    assert (len(one_min_map[last_slot].keys()) == len(mcodes))
                 spent = time.time() - start
                 logi("fill data  spent={}".format(round(spent, 3)))
                 if spent >= 1:
@@ -389,44 +390,47 @@ def update_bar1min(ticks_tmp, one_min_map):
 
 # 补充本slot没有tick数据的情况
 # 停牌、正常情况也可能出现的本slot没有tick数据的情况
-def fill_slot_date(api, mcodes, one_min_map, last_slot) -> List[Bar1MinData]:
+def fill_slot_date(api, mcodes, one_min_map, slot) -> List[Bar1MinData]:
     today_date = cur_date()
     bars: List[Bar1MinData] = []
-    if last_slot not in one_min_map:
-        loge("no tick in slot {}".format(last_slot))
+    if slot not in one_min_map:
+        loge("no tick in slot {}".format(slot))
         return bars
 
     for market, code in mcodes:
-        if code in one_min_map[last_slot]:
-            tmp_data: Bar1MinData = one_min_map[last_slot][code]
-            assert last_slot == tmp_data.time
+        if code in one_min_map[slot]:
+            tmp_data: Bar1MinData = one_min_map[slot][code]
+            assert slot == tmp_data.time
             bars.append(tmp_data)
         else:
-            logw("code {} has no slot {} in one_min_map".format(code, last_slot))
-            tmp_data: Bar1MinData = find_info_from_prev_slot(last_slot, code, one_min_map)
+            # logw("code {} has no slot {} in one_min_map".format(code, slot))
+            tmp_data: Bar1MinData = find_info_from_prev_slot(slot, code, one_min_map)
             if tmp_data:
-                logi("code {} slot {} fill data {}".format(code, last_slot, tmp_data))
-                b: Bar1MinData = Bar1MinData(date=today_date, time=last_slot, code=code,
+                logi("code {} slot {} fill data. fill_data={}".format(code, slot, tmp_data))
+                filled_date = tmp_data.fill_date if tmp_data.fill_date else tmp_data.date+tmp_data.time
+                b: Bar1MinData = Bar1MinData(date=today_date, time=slot, code=code,
                                              open_st=tmp_data.close_st, open=tmp_data.close,
                                              close_st=tmp_data.close_st, close=tmp_data.close,
-                                             fill_date=tmp_data.fill_date)
+                                             fill_date=filled_date)
 
-                one_min_map[last_slot][code] = b
+                one_min_map[slot][code] = b
                 bars.append(b)
             else:
                 data = api.get_security_bars(8, market, code, 0, 1)  # 查询最近的1分钟线
                 if data:
                     logi("code {} succeed to get data data={}".format(code, data))
-                    # d['datetime'], d['open'], d['close']ar
+                    # d['datetime'], d['open'], d['close']
+                    # datetime=2023-07-31 15:00 open=53.58 close=53.58
                     d = data[0]
-                    st = d['datetime'][12:17] + ":00.000"
-                    filled_date = d['datetime'].replace("-", "")[0:8]
-                    b: Bar1MinData = Bar1MinData(date=today_date, time=last_slot, code=code,
+                    tmp_datetime = d['datetime'].replace("-", "").replace(" ", "")  # ==2023073115:00
+                    st = tmp_datetime[8:] + ":00.000"  # == 15:00:00.000
+                    filled_date = tmp_datetime.replace(":", "")  # ==202307311500
+                    b: Bar1MinData = Bar1MinData(date=today_date, time=slot, code=code,
                                                  open_st=st, open=d['close'],  # open和close使用一样的值填充
                                                  close_st=st, close=d['close'],
                                                  fill_date=filled_date)
-                    one_min_map[last_slot][code] = b
-                    logi("code {} slot{} filled data. fill_data={}".format(code, last_slot, b))
+                    one_min_map[slot][code] = b
+                    logi("code {} slot{} filled data. fill_data={}".format(code, slot, b))
                     bars.append(b)
                 else:
                     loge("code {} fail to get data by get_security_bars".format(code))
@@ -436,8 +440,41 @@ def fill_slot_date(api, mcodes, one_min_map, last_slot) -> List[Bar1MinData]:
     return bars
 
 
+def ttt():
+    HOST = "110.41.147.114"
+    api = TdxHq_API()
+    mcodes, _ = read_cfg()
+    idx = 0
+    with api.connect(ip=HOST, port=7709, time_out=60):
+        while 1:
+            # data = api.get_security_bars(8, 1, '688567', 0, 3)
+            # data = api.get_security_bars(8, 0, '003043', 0, 2)
+            data = api.get_security_bars(8, mcodes[idx][0], mcodes[idx][1], 0, 2)
+            # print(type(data))
+            # data.reverse()
+            idx += 1
+            if idx >= len(mcodes):
+                idx = 0
+            # d['datetime'], d['open'], d['close']
+            # datetime=2023-07-31 15:00 open=53.58 close=53.58
+            d = data[0]
+            tmp_datetime = d['datetime'].replace("-", "").replace(" ", "")  # ==2023073115:00
+            st = tmp_datetime[8:] + ":00.000"  # == 15:00:00.000
+            filled_date = tmp_datetime.replace(":", "")  # ==202307311500
+            b: Bar1MinData = Bar1MinData(date="11111", time="slot", code="code",
+                                         open_st=st, open=d['close'],  # open和close使用一样的值填充
+                                         close_st=st, close=d['close'],
+                                         fill_date=filled_date)
+            db_bar: Bar1Min = Bar1Min(date=b.date, time=b.time, code=b.code,
+                                      open_st=b.open_st, open=b.open,
+                                      close_st=b.close_st, close=b.close, fill_date=b.fill_date)
+            print(b)
+            print(db_bar)
+            time.sleep(3)
+
 if __name__ == '__main__':
     # tst_get_query_timer()
     # tst_find_info_from_prev_slot()
     tdx_tick()
+    # ttt()
     pass

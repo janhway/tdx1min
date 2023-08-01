@@ -77,7 +77,7 @@ class Bar1Min(Base):
     open_st = Column(Text(16)) # servertime
     close = Column(Text(10))
     close_st = Column(Text(16))  # servertime
-    fill_date = Column(Text(8))
+    fill_date = Column(Text(16))
     created = Column(Integer, default=cur_timestamp_ms)
 
     def __repr__(self):

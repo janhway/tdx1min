@@ -38,12 +38,21 @@ def tst_tdx01():
 
 def tst_tdx02():
     api = TdxHq_API()
+    mcodes, _ = read_cfg()
+    idx = 0
     with api.connect(ip=HOST, port=7709, time_out=60):
         while 1:
             # data = api.get_security_bars(8, 1, '688567', 0, 3)
-            data = api.get_security_bars(8, 0, '003043', 0, 3)
+            # data = api.get_security_bars(8, 0, '003043', 0, 2)
+            data = api.get_security_bars(8, mcodes[idx][0], mcodes[idx][1], 0, 2)
+            # print(type(data))
+            # data.reverse()
+            idx += 1
+            if idx >= len(mcodes):
+                idx = 0
             for i,d in enumerate(data):
-                logi("#{} datetime={} open={} close={}".format(i,d['datetime'],d['open'],d['close']))
+                logi("#{} code={} datetime={} open={} close={}"
+                     .format(i,mcodes[idx], d['datetime'],d['open'],d['close']))
             time.sleep(3)
 
 
@@ -110,11 +119,11 @@ if __name__ == '__main__':
     # print(len(ss),ss)
     # read_cfg()
     # tst_tdx()
-    # tst_tdx02()
+    tst_tdx02()
     # print(day_1min_slots())
     # print(slot_from_servertime('10:18:30.486'))
     # print(slot_from_servertime('9:18:30.486'))
     # print(cur_date())
     # tst_find_info_from_prev_slot()
-    write_stg_price('0931', 11.3, 12.33333)
+    # write_stg_price('0931', 11.3, 12.33333)
     pass
