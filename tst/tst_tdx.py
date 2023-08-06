@@ -59,8 +59,8 @@ def tst_tdx02():
         while 1:
             # data = api.get_security_bars(8, 1, '688567', 0, 3)
             # data = api.get_security_bars(8, 0, '003043', 0, 2)
-            data = api.get_security_bars(8, 1, '603290', 0, 3)
-            # data = api.get_security_bars(8, mcodes[idx][0], mcodes[idx][1], 0, 2)
+            # data = api.get_security_bars(8, 1, '603290', 0, 3)
+            data = api.get_security_bars(8, mcodes[idx][0], mcodes[idx][1], 0, 2)
             # print(type(data))
             # print(data)
             # data.reverse()
@@ -70,6 +70,30 @@ def tst_tdx02():
             for i, d in enumerate(data):
                 logi("#{} code={} datetime={} open={} close={}"
                      .format(i, mcodes[idx], d['datetime'], d['open'], d['close']))
+            time.sleep(3)
+
+
+def tst_tdx03():
+    api = TdxHq_API()
+
+    idx = 0
+
+    # mcodes, _ = read_cfg()
+    mcodes = [(1,'600036'),(1,'600519')]
+    with api.connect(ip=HOST, port=7709, time_out=60):
+        while 1:
+            bars = api.get_security_bars(8, mcodes[idx][0], mcodes[idx][1], 0, 1)
+            b = bars[0]
+            quotes = api.get_security_quotes([mcodes[idx]])
+            q = quotes[0]
+
+            idx += 1
+            if idx >= len(mcodes):
+                idx = 0
+
+            logi("code={} bar.datetime={} bar.open={} bar.close={} q.servertime={} q.price={}"
+                 .format(mcodes[idx], b['datetime'], b['open'], b['close'], q['servertime'], q['price']))
+
             time.sleep(3)
 
 
@@ -172,8 +196,9 @@ if __name__ == '__main__':
     # print(len(ss),ss)
     # read_cfg()
     # tst_tdx()
-    tst_tdx01()
+    # tst_tdx01()
     # tst_tdx02()
+    tst_tdx03()
     # print(day_1min_slots())
     # print(slot_from_servertime('10:18:30.486'))
     # print(slot_from_servertime('9:18:30.486'))
