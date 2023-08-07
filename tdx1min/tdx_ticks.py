@@ -100,16 +100,16 @@ def get_stg_path():
 
 def write_stg_price(slot: str, open_price: float, close_price: float):
     file = get_stg_path()
-    file = file.joinpath("stg_" + datetime.datetime.now(tz=CHINA_TZ).strftime("%Y%m%d") + ".csv")
+    file = file.joinpath("stg_" + datetime.datetime.now().strftime("%Y%m%d") + ".csv")
     if not file.exists():
         with open(file, "w") as fp:
             fp.write('Code,open,close,dt\n')
     open_price = round(open_price, 3)
     close_price = round(close_price, 3)
-
-    tmp = ['Stg', str(open_price), str(close_price), slot, "\n"]
+    tmp = ['Stg', str(open_price), str(close_price), slot]
+    tmp = ','.join(tmp) + "\n"
     with open(file, "a") as fp:
-        fp.write(','.join(tmp))
+        fp.write(tmp)
     return
 
 
@@ -174,7 +174,8 @@ def query_ticks(api, ss) -> dict:
         if stocks:
             logd("{} stock quotes num={}".format(i, len(stocks)))
             for s in stocks:
-                slot = slot_from_servertime(s['servertime'])
+                slot = datetime.datetime.now().strftime("%H%M")
+                # slot = slot_from_servertime(s['servertime'])
                 # s['servertime'][0:5] if s['servertime'][0] != '9' else s['servertime'][0:4]
                 code = s['code']
                 if slot not in ticks_map:
@@ -198,22 +199,22 @@ def need_query():
     if not now_is_tradedate():
         return False
 
-    fstart = datetime.time(9, 24, 59, tzinfo=CHINA_TZ)
-    fend = datetime.time(11, 30, 59, tzinfo=CHINA_TZ)
-    sstart = datetime.time(12, 59, 59, tzinfo=CHINA_TZ)
-    send = datetime.time(15, 0, 59, tzinfo=CHINA_TZ)
+    fstart = datetime.time(9, 24, 59)
+    fend = datetime.time(11, 30, 59)
+    sstart = datetime.time(12, 59, 59)
+    send = datetime.time(15, 0, 59)
 
-    current_time = datetime.datetime.now(tz=CHINA_TZ).time()
+    current_time = datetime.datetime.now().time()
     if (fstart <= current_time <= fend) or (sstart <= current_time <= send):
         return True
     return False
 
 
 def day_1min_slots():
-    fstart = datetime.time(9, 25, 0, tzinfo=CHINA_TZ)
-    fend = datetime.time(11, 30, 0, tzinfo=CHINA_TZ)
-    sstart = datetime.time(13, 0, 0, tzinfo=CHINA_TZ)
-    send = datetime.time(15, 0, 0, tzinfo=CHINA_TZ)
+    fstart = datetime.time(9, 25, 0)
+    fend = datetime.time(11, 30, 0)
+    sstart = datetime.time(13, 0, 0)
+    send = datetime.time(15, 0, 0)
 
     ret = []
     start = datetime.datetime(year=1900, month=1, day=1,
@@ -227,7 +228,7 @@ def day_1min_slots():
 
 
 def cur_date():
-    n = datetime.datetime.now(tz=CHINA_TZ)
+    n = datetime.datetime.now()
     return n.strftime("%Y%m%d")
 
 
@@ -477,4 +478,5 @@ if __name__ == '__main__':
     # tst_find_info_from_prev_slot()
     tdx_tick()
     # ttt()
+    # print(day_1min_slots())
     pass

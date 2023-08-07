@@ -2,12 +2,13 @@ import datetime
 import time
 
 from pathlib import Path
+from typing import List
 
 from sqlalchemy import create_engine, Column, Integer, Text, Float, Index
 from sqlalchemy.orm import sessionmaker, declarative_base
 
 from tdx1min.tdx_cfg import WORK_DIR
-from tdx1min.trade_calendar import CHINA_TZ
+
 from tdx1min.vnlog import logi
 
 
@@ -74,16 +75,16 @@ class Bar1Min(Base):
     date = Column(Text(8))
     time = Column(Text(8))
     open = Column(Text(10))
-    open_st = Column(Text(16)) # servertime
+    open_st = Column(Text(16))  # servertime
     close = Column(Text(10))
     close_st = Column(Text(16))  # servertime
     fill_date = Column(Text(16))
     created = Column(Integer, default=cur_timestamp_ms)
 
     def __repr__(self):
-        return str(self.code) + "_" + str(self.date) + "_" + str(self.time)\
-               + "_" + str(self.open_st) + "_" + str(self.open)\
-               + "_" + str(self.close_st) + "_" + str(self.close)
+        return str(self.code) + "_" + str(self.date) + "_" + str(self.time) \
+            + "_" + str(self.open_st) + "_" + str(self.open) \
+            + "_" + str(self.close_st) + "_" + str(self.close)
 
     index_time_code = Index('idx_date_time_code', date, time, code)
 
@@ -101,13 +102,22 @@ def crt_ticks(ticks):
         session.commit()
 
 
-def crt_bar1min(bars):
+def crt_bar1min(bars: List[Bar1Min]):
     with Session() as session:
         session.add_all(bars)
         session.commit()
 
 
+def find_bar1min(date: str, code: str) -> List[Bar1Min]:
+    # date = cur_date()
+    with Session() as session:
+        bar_list = session.query(Bar1Min).filter_by(date=date, code=code).all()
+
+    return bar_list
+
+
 create_database()
 
 if __name__ == '__main__':
-    pass
+    bars = find_bar1min("20230802", "600004.SH")
+    print(bars)
