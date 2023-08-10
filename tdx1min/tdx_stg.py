@@ -110,19 +110,21 @@ def write_stg_price(slot: str, open_price: float, close_price: float):
         lines = fp.readlines()
 
     if lines:
-        last_line = lines[-1]
-        info = last_line.split(",")
-        if info[3] == slot:
-            logw("dup slot {}. replace it.".format(slot))
-            lines[-1] = new_last_line
-            with open(file, "w") as fp:
-                fp.writelines(lines)
-            return
+        last_line = lines[-1].strip()
+        if last_line:
+            info = last_line.split(",")
+            if info[3] == slot:
+                logw("dup slot {}. replace it.".format(slot))
+                lines[-1] = new_last_line
+                with open(file, "w") as fp:
+                    fp.writelines(lines)
+                return
 
     with open(file, "a") as fp:
         if not lines:
             fp.write(title)
         fp.write(new_last_line)
+    logi("new slot {}.".format(slot))
     return
 
 

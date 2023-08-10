@@ -52,14 +52,18 @@ def tdx_slot_equal(tdx_slot_std, tdx_slot_option):
     return False
 
 
-def get_tdx_last_slot(dt=datetime.datetime.now()):
+def get_tdx_last_slot(dt=None):
+    if not dt:
+        dt = datetime.datetime.now()
     # 分钟线我们用开始时间点标识，tdx用结束时间点表示，比如 从09:30到09:31这一分钟，我们用0930表示，tdx用0931表示
     # 在11:29到11:30这一分钟，在11:30后查询，tdx可能用1300表示
     m = (dt.minute // BAR_PERIOD) * BAR_PERIOD
     return f"{dt.hour:02d}{m:02d}"
 
 
-def get_our_last_slot(dt=datetime.datetime.now()):
+def get_our_last_slot(dt=None):
+    if not dt:
+        dt = datetime.datetime.now()
     # 分钟线我们用开始时间点标识，tdx用结束时间点表示，比如 从09:30到09:31这一分钟，我们用0930表示，tdx用0931表示
     my_slot_time = (dt - datetime.timedelta(minutes=BAR_PERIOD))
     m = (my_slot_time.minute // BAR_PERIOD) * BAR_PERIOD
