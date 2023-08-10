@@ -56,6 +56,7 @@ def query_bar1min_worker(mc_list: List[Tuple[int, str]],
                          api: TdxHq_API, exact: bool = True) -> Tuple[dict, List, List]:
     start = time.time()
     logi("host={} num={}".format(api.ip, len(mc_list)))
+
     if not exact:
         logi("non-exact query. market_code_list={}".format(mc_list))
 
@@ -73,35 +74,30 @@ def query_bar1min_worker(mc_list: List[Tuple[int, str]],
         end = i + 15 if i + 15 < len(mc_list) else len(mc_list)
         data = api.get_security_bars_x(8, mc_list[i:end], 0, 2)
         if not exact:
-            logi("non-exact query. data={}".format(data))
+            logi("non-exact query. return data={}".format(data))
+
         for market, code in mc_list[i:end]:
             if code not in data:
                 non_exist.append((market, code))
+                loge("code {} has no bar info.".format(code))
                 continue
 
-            d: dict = data[code]
+            d: List[dict] = data[code]
             found = False
-            if exact:
-                for it in d:
-                    # 'datetime', '2023-08-09 15:00'
-                    tmp_tdx_datetime = it['datetime'].replace("-", "").replace(":", "").replace(" ", "")
-                    it_tdx_date = tmp_tdx_datetime[0:8]
-                    it_tdx_slot = tmp_tdx_datetime[8:]
-                    if it_tdx_date == today and tdx_slot_equal(tdx_slot_std, it_tdx_slot):
-                        mp[code] = it
-                        found = True
-            else:
-                for j in range(len(d) - 1, -1, -1):  # 倒序遍历 先比较最新的
-                    tmp_tdx_datetime = d[j]['datetime'].replace("-", "").replace(":", "").replace(" ", "")
-                    it_tdx_date = tmp_tdx_datetime[0:8]
-                    it_tdx_slot = tmp_tdx_datetime[8:]
-                    if it_tdx_date == today and tdx_slot_equal(tdx_slot_std, it_tdx_slot):
-                        mp[code] = d[j]
-                        found = True
-                    elif it_tdx_date < today or it_tdx_slot <= tdx_slot_std or (tdx_slot_std == '1130' and it_tdx_slot == '1300'):
-                        mp[code] = d[j]
-                        mp[code]['open'] = d[j]['close']  # open设置成跟close一样
-                        found = True
+            for it in d:
+                # 'datetime', '2023-08-09 15:00'
+                tmp_tdx_datetime = it['datetime'].replace("-", "").replace(":", "").replace(" ", "")
+                it_tdx_date = tmp_tdx_datetime[0:8]
+                it_tdx_slot = tmp_tdx_datetime[8:]
+                if it_tdx_date == today and tdx_slot_equal(tdx_slot_std, it_tdx_slot):
+                    mp[code] = it
+                    found = True
+
+            if (not found) and (not exact):
+                j = len(d) - 1
+                mp[code] = d[j]  # 取最后一个最新的
+                mp[code]['open'] = d[j]['close']  # open设置成跟close一样
+                found = True
 
             if not found:
                 lost.append((market, code))
@@ -110,20 +106,15 @@ def query_bar1min_worker(mc_list: List[Tuple[int, str]],
             # mp[code] = data[code][0] # test code
 
     spent = round(time.time() - start, 2)
-    logi("code num={} spent {} seconds host={} lost={} non_exist={}"
+    logi("code num={} spent {} seconds. lost={} non_exist={} host={}"
          .format(len(mc_list), spent, api.ip, lost, non_exist))
 
     return mp, lost, non_exist
 
 
-# def create_api(host: str):
-#     api = TdxHq_API(auto_retry=True)
-#     api.connect(ip=host, port=7709, time_out=60)
-#     return api
-
-
 def query_bar1min(market_code_list: List[Tuple[int, str]],
                   api_pool: ApiPool, exact: bool = True) -> Tuple[dict, List, List]:
+
     start = time.time()
 
     min_step = 150
@@ -133,7 +124,7 @@ def query_bar1min(market_code_list: List[Tuple[int, str]],
     if step < min_step:
         step = min_step
         max_workers = math.ceil(len(market_code_list) / step)
-    logi("worker num={} step={}".format(api_pool.num, step))
+    logi("worker num={} step={}".format(max_workers, step))
 
     futures = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -156,7 +147,7 @@ def query_bar1min(market_code_list: List[Tuple[int, str]],
         else:
             loge("error={}".format(err))
     spent = round(time.time() - start, 2)
-    logi("code num={} spent {} seconds lost={} non_exist={}".format(len(market_code_list), spent, lost, non_exist))
+    logi("code num={} spent {} seconds. lost={} non_exist={}".format(len(market_code_list), spent, lost, non_exist))
 
     return mp, lost, non_exist
 
@@ -165,7 +156,7 @@ def tdx_bar_main():
     mcodes, cfg = read_cfg()
     pre_tmap = cal_pre_tmap(cfg)
     valid_slots = day_1min_slots()
-    logi("pre_tmap={} stock num={} valid_slots={}".format(pre_tmap, len(mcodes), valid_slots))
+    logi("pre_tmap={} stock num={}".format(pre_tmap, len(mcodes)))
 
     tnow = datetime.datetime.now()
     t = datetime.datetime(year=tnow.year, month=tnow.month, day=tnow.day,
@@ -201,19 +192,20 @@ def tdx_bar_main():
         if last_slot not in valid_slots:
             continue
             pass
+
         mp, lost, non_exist = query_bar1min(mcodes, api_pool, exact=True)
         if lost:
             lost.extend(non_exist)
             tmp_mp, tmp_lost, non_exist = query_bar1min(lost, api_pool, exact=False)
-            if tmp_mp:
-                mp.update(tmp_mp)
+            assert len(lost) == len(tmp_mp.keys())
+            mp.update(tmp_mp)
 
         # 计算和保存stg指数信息
-        start = time.time()
+        # start = time.time()
         stg_open, stg_close = cal_open_close_new(last_slot, pre_tmap, cfg, mp)
         write_stg_price(last_slot, stg_open, stg_close)
-        spent = time.time() - start
-        logi("cal stg {} spent={}".format(last_slot, round(spent, 3)))
+        # spent = time.time() - start
+        # logi("cal stg {} spent={}".format(last_slot, round(spent, 3)))
 
         # begin save db. option
         start = time.time()
