@@ -17,8 +17,11 @@ def check_bar1min_from_db():
     codes: List[str] = ret[0]
     today = cur_date()
 
-    api = TdxHq_API()
     valid_slots = day_1min_slots()
+    sel_slot = [str(slot) for slot in range(1000, 1100, 1) if str(slot) in valid_slots]
+
+    api = TdxHq_API()
+
     with api.connect(ip=HOST, port=7709, time_out=60):
 
         for market,code in codes:
@@ -38,13 +41,16 @@ def check_bar1min_from_db():
             #  ......]
             for d in data:
                 tmp_dt = datetime.datetime.strptime(d['datetime'], "%Y-%m-%d %H:%M")
+                tdx_slot_str = tmp_dt.strftime("%H%M")
                 tmp_dt -= datetime.timedelta(minutes=1)  # slot表示方式不一样 我们用开始时间，通达信用结束时间
                 dt_str = tmp_dt.strftime("%Y%m%d")
                 slot_str = tmp_dt.strftime("%H%M")
+                if tdx_slot_str == '1300':
+                    slot_str = '1129'
+
                 d['date'] = dt_str
                 d['slot'] = slot_str
 
-            sel_slot = [str(slot) for slot in range(1000, 1100, 1) if str(slot) in valid_slots]
             db_bars = []
             for b in db_bars_x:
                 if b.time in sel_slot:
@@ -200,4 +206,4 @@ def check_bar1min_from_log():
 
 
 if __name__ == "__main__":
-    check_bar1min_from_log()
+    check_bar1min_from_db()

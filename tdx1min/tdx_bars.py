@@ -43,29 +43,77 @@ class ApiPool(object):
         self.active = False
 
 
-def query_bar1min_worker(market_code_list: List[Tuple[int, str]], api: TdxHq_API):
-    # market_code_list = read_cfg()
-    mp = {}
-    logi("host={} num={}".format(api.ip, len(market_code_list)))
-    start = time.time()
+def tdx_slot_equal(tdx_slot_std, tdx_slot_option):
+    if tdx_slot_std == tdx_slot_option:
+        return True
+    # 在11:29到11:30这一分钟，在11:30后查询，tdx可能用1300表示，而不是1130
+    if tdx_slot_std == "1130" and tdx_slot_option == "1300":
+        return True
+    return False
 
-    now = datetime.datetime.now()
+
+def query_bar1min_worker(mc_list: List[Tuple[int, str]],
+                         api: TdxHq_API, exact: bool = True) -> Tuple[dict, List, List]:
+    start = time.time()
+    logi("host={} num={}".format(api.ip, len(mc_list)))
+    if not exact:
+        logi("non-exact query. market_code_list={}".format(mc_list))
+
+    mp = {}
+    non_exist = []
+    lost = []
+    # now = datetime.datetime.now()
+    # 分钟线我们用开始时间点标识，tdx用结束时间点表示，比如 从09:30到09:31这一分钟，我们用0930表示，tdx用0931表示
+    # 在11:29到11:30这一分钟，在11:30后查询，tdx可能用1300表示
     # my_slot = (now - datetime.timedelta(minutes=1)).strftime("%H%M")
-    tdx_slot = datetime.datetime.now().strftime("%H%M")
-    for i in range(0, len(market_code_list), 15):
-        end = i + 15 if i + 15 < len(market_code_list) else len(market_code_list)
-        data = api.get_security_bars_x(8, market_code_list[i:end], 0, 2)
-        for code in data:
-            for it in data[code]:
-                # 'datetime', '2023-08-09 15:00'
-                it_tdx_slot = it['datetime'][11:].replace(":", "")
-                if it_tdx_slot == tdx_slot:
-                    mp[code] = it
+    tdx_slot_std = datetime.datetime.now().strftime("%H%M")
+    today = cur_date()
+
+    for i in range(0, len(mc_list), 15):
+        end = i + 15 if i + 15 < len(mc_list) else len(mc_list)
+        data = api.get_security_bars_x(8, mc_list[i:end], 0, 2)
+        if not exact:
+            logi("non-exact query. data={}".format(data))
+        for market, code in mc_list[i:end]:
+            if code not in data:
+                non_exist.append((market, code))
+                continue
+
+            d: dict = data[code]
+            found = False
+            if exact:
+                for it in d:
+                    # 'datetime', '2023-08-09 15:00'
+                    tmp_tdx_datetime = it['datetime'].replace("-", "").replace(":", "").replace(" ", "")
+                    it_tdx_date = tmp_tdx_datetime[0:8]
+                    it_tdx_slot = tmp_tdx_datetime[8:]
+                    if it_tdx_date == today and tdx_slot_equal(tdx_slot_std, it_tdx_slot):
+                        mp[code] = it
+                        found = True
+            else:
+                for j in range(len(d) - 1, -1, -1):  # 倒序遍历 先比较最新的
+                    tmp_tdx_datetime = d[j]['datetime'].replace("-", "").replace(":", "").replace(" ", "")
+                    it_tdx_date = tmp_tdx_datetime[0:8]
+                    it_tdx_slot = tmp_tdx_datetime[8:]
+                    if it_tdx_date == today and tdx_slot_equal(tdx_slot_std, it_tdx_slot):
+                        mp[code] = d[j]
+                        found = True
+                    elif it_tdx_date < today or it_tdx_slot <= tdx_slot_std or (tdx_slot_std == '1130' and it_tdx_slot == '1300'):
+                        mp[code] = d[j]
+                        mp[code]['open'] = d[j]['close']  # open设置成跟close一样
+                        found = True
+
+            if not found:
+                lost.append((market, code))
+                loge("code {} has no valid data {}  exact={}".format(code, d, exact))
+
             # mp[code] = data[code][0] # test code
 
     spent = round(time.time() - start, 2)
-    logi("host={} num={} spent {} seconds".format(api.ip, len(market_code_list), spent))
-    return mp
+    logi("code num={} spent {} seconds host={} lost={} non_exist={}"
+         .format(len(mc_list), spent, api.ip, lost, non_exist))
+
+    return mp, lost, non_exist
 
 
 # def create_api(host: str):
@@ -74,37 +122,43 @@ def query_bar1min_worker(market_code_list: List[Tuple[int, str]], api: TdxHq_API
 #     return api
 
 
-def query_bar1min(market_code_list: List[Tuple[int, str]], api_pool: ApiPool):
-    # market_code_list = read_cfg()
-    #
-    # hosts = [TDX_HQ_HOST[k] for k in TDX_HQ_HOST]
-    # max_num = 8 if len(hosts) > 8 else len(hosts)
-    # api_pools = []
-    # for i in range(max_num):
-    #     api_pools.append(create_api(hosts[i]['IPAddress']))
-
+def query_bar1min(market_code_list: List[Tuple[int, str]],
+                  api_pool: ApiPool, exact: bool = True) -> Tuple[dict, List, List]:
     start = time.time()
+
+    min_step = 150
+
     step = math.ceil(len(market_code_list) / api_pool.num)
+    max_workers = api_pool.num
+    if step < min_step:
+        step = min_step
+        max_workers = math.ceil(len(market_code_list) / step)
     logi("worker num={} step={}".format(api_pool.num, step))
+
     futures = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=api_pool.num) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         for i in range(0, len(market_code_list), step):
             idx = int(i / step)
             end = i + step if i + step < len(market_code_list) else len(market_code_list)
-            future = executor.submit(query_bar1min_worker, market_code_list[i:end], api_pool[idx])
+            future = executor.submit(query_bar1min_worker, market_code_list[i:end], api_pool[idx], exact)
             futures.append(future)
 
     mp = {}
+    lost = []
+    non_exist = []
     for future in concurrent.futures.as_completed(futures):
         err = future.exception()
         if not err:
-            r = future.result()
-            mp.update(r)
+            tmp_mp, tmp_lost, tmp_non_exist = future.result()
+            mp.update(tmp_mp)
+            lost.extend(tmp_lost)
+            non_exist.extend(tmp_non_exist)
         else:
             loge("error={}".format(err))
     spent = round(time.time() - start, 2)
-    logi("num={} spent {} seconds".format(len(market_code_list), spent))
-    return mp
+    logi("code num={} spent {} seconds lost={} non_exist={}".format(len(market_code_list), spent, lost, non_exist))
+
+    return mp, lost, non_exist
 
 
 def tdx_bar_main():
@@ -116,7 +170,7 @@ def tdx_bar_main():
     tnow = datetime.datetime.now()
     t = datetime.datetime(year=tnow.year, month=tnow.month, day=tnow.day,
                           hour=tnow.hour, minute=tnow.minute, second=5, microsecond=0)
-    t += datetime.timedelta(minutes=1)
+    # t += datetime.timedelta(minutes=1)
     que = [t]
     logi("timer que {}".format(que))
     today_date = cur_date()
@@ -147,7 +201,12 @@ def tdx_bar_main():
         if last_slot not in valid_slots:
             continue
             pass
-        mp = query_bar1min(mcodes, api_pool)
+        mp, lost, non_exist = query_bar1min(mcodes, api_pool, exact=True)
+        if lost:
+            lost.extend(non_exist)
+            tmp_mp, tmp_lost, non_exist = query_bar1min(lost, api_pool, exact=False)
+            if tmp_mp:
+                mp.update(tmp_mp)
 
         # 计算和保存stg指数信息
         start = time.time()

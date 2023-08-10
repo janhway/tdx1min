@@ -7,7 +7,7 @@ from pathlib import Path
 from threading import Thread
 from typing import Any, Dict, List
 
-from src_stg.tick_cfg import WORK_DIR
+from tdx1min.tdx_cfg import WORK_DIR
 
 
 def get_path(path):
@@ -32,7 +32,7 @@ class CollectEngine(object):
         self.lock = threading.Lock()
         self.active: bool = False
 
-        self.filename = filename
+        self.filename = os.path.join(get_path("logs"), filename)
         self.fp = None
         self.wait_num = 0
 
@@ -73,17 +73,21 @@ class CollectEngine(object):
                     spent = time.time() - start
                     print("write num={} spent={}".format(len(que), round(spent, 3)))
                 else:
-                    self.fp.flush()
-                    self.wait_num = 0
-                    time.sleep(0.5)
+                    if self.wait_num > 0:
+                        self.fp.flush()
+                        self.wait_num = 0
+                        self.fp.close()
+                        self.fp = open(self.filename, "a")
+                        time.sleep(0.1)
+                    else:
+                        time.sleep(0.5)
 
             except Exception as e:
                 print(e)
 
     def start(self) -> None:
         """"""
-        filepath = os.path.join(get_path("log"), self.filename)
-        self.fp = open(filepath, "a")
+        self.fp = open(self.filename, "a")
         self.active = True
         self.thread.start()
 

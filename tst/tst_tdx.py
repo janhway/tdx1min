@@ -7,8 +7,9 @@ from pytdx.hq import TdxHq_API
 
 import pathlib
 
-from tdx1min.tdx_ticks import read_cfg, day_1min_slots, slot_from_servertime, cur_date, tst_find_info_from_prev_slot, \
-    write_stg_price
+from tdx1min.collect import CollectEngine
+from tdx1min.tdx_bars import ApiPool
+from tdx1min.tdx_ticks import read_cfg
 from tdx1min.vnlog import logi
 
 HOST = "110.41.147.114"
@@ -206,7 +207,7 @@ from pytdx.reader import TdxDailyBarReader, TdxFileNotFoundException
 
 
 def tst_tdx_reader():
-    reader = TdxDailyBarReader(r"D:\new_tdx\vipdoc") #r"C:\zd_zsone\vipdoc")
+    reader = TdxDailyBarReader(r"D:\new_tdx\vipdoc")  # r"C:\zd_zsone\vipdoc")
 
     df = reader.get_df("600036", "sh")
     # df = reader.get_df(r"D:\new_tdx\vipdoc\sh\minline\sh600000.lc1")
