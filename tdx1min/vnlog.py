@@ -33,7 +33,7 @@ class LogEngine(object):
     Processes log event and output with logging module.
     """
 
-    def __init__(self):
+    def __init__(self, file_name=None):
         """"""
         if not SETTINGS["log.active"]:
             return
@@ -52,6 +52,14 @@ class LogEngine(object):
         )
 
         self.add_null_handler()
+
+        today_date = datetime.now().strftime("%Y%m%d")
+        if not file_name:
+            filename = f"vt_{today_date}.log"
+        else:
+            filename = file_name
+        log_path = get_logs_path()
+        self.file_path = os.path.join(log_path, filename)
 
         if SETTINGS["log.console"]:
             self.add_console_handler()
@@ -85,13 +93,13 @@ class LogEngine(object):
         """
         Add file output of log.
         """
-        today_date = datetime.now().strftime("%Y%m%d")
-        filename = f"vt_{today_date}.log"
-        log_path = get_logs_path()
-        file_path = os.path.join(log_path, filename)
+        # today_date = datetime.now().strftime("%Y%m%d")
+        # filename = f"vt_{today_date}.log"
+        # log_path = get_logs_path()
+        # file_path = os.path.join(log_path, filename)
 
         file_handler = logging.FileHandler(
-            file_path, mode="a", encoding="utf8"
+            self.file_path, mode="a", encoding="utf8"
         )
         file_handler.setLevel(self.level)
         file_handler.setFormatter(self.formatter)
