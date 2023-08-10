@@ -36,7 +36,7 @@ def tst_tdx01():
         # stock_list = api.get_security_list(1, 517)  # 沪市从517开始 ???
         # print(len(stock_list), stock_list)
         while 1:
-            stocks = api.get_security_quotes([(1,'600036')])
+            stocks = api.get_security_quotes([(1, '600036')])
             for d in stocks:
                 # d = stocks[0]
                 now = datetime.datetime.now()
@@ -79,7 +79,7 @@ def tst_tdx03():
     idx = 0
 
     # mcodes, _ = read_cfg()
-    mcodes = [(1,'600036'),(1,'600519')]
+    mcodes = [(1, '600036'), (1, '600519')]
     with api.connect(ip=HOST, port=7709, time_out=60):
         while 1:
             bars = api.get_security_bars(8, mcodes[idx][0], mcodes[idx][1], 0, 1)
@@ -156,15 +156,15 @@ def tst_tdx():
 
 
 def read_log():
-    file = r'C:\workdir\tombp\tdx1min\.workdir\logs\vt_20230801 - 副本.log'
-    code = '603290'
+    file = r'E:\chenzhenwei\PycharmProjects\quant\tdx1min\.workdir\logs\vt_20230808.log'
+    # code = '603290'
     # code = '600620'
     with open(file, 'r') as fp:
         while 1:
             line = fp.readline()
             if not line:
                 break
-            idx = line.find('query_ticks 191 INFO')
+            idx = line.find('query_ticks 192 INFO')
             if idx >= 0:
                 t = line[0:idx].strip()
                 line = fp.readline()  # 忽略stocks
@@ -180,7 +180,7 @@ def read_log():
                 # print('=====',type(print_timex), print_timex, print_time)
                 pt: float = print_time.timestamp()
                 for slot in ticks_tmp:
-                    if code in ticks_tmp[slot]:
+                    for code in ticks_tmp[slot]:
                         stx = datetime.datetime.strptime(ticks_tmp[slot][code]['servertime'], "%H:%M:%S.%f")
                         sty = datetime.datetime(year=print_time.year, month=print_time.month, day=print_time.day,
                                                 hour=stx.hour, minute=stx.minute,
@@ -189,6 +189,28 @@ def read_log():
                         diff = round(pt - st, 5)
 
                         print(slot, code, t, ticks_tmp[slot][code], diff)
+                # break
+
+
+def tst_tdx04():
+    api = TdxHq_API()
+    with api.connect(ip=HOST, port=7709, time_out=60):
+        market, code = 1, '600000'
+        # data = api.get_security_bars(8, market, code, 0, 1)
+        # print(data)
+        data = api.get_minute_time_data(market, code)
+        print(data)
+
+
+from pytdx.reader import TdxDailyBarReader, TdxFileNotFoundException
+
+
+def tst_tdx_reader():
+    reader = TdxDailyBarReader(r"D:\new_tdx\vipdoc") #r"C:\zd_zsone\vipdoc")
+
+    df = reader.get_df("600036", "sh")
+    # df = reader.get_df(r"D:\new_tdx\vipdoc\sh\minline\sh600000.lc1")
+    print(df)
 
 
 if __name__ == '__main__':
@@ -197,8 +219,10 @@ if __name__ == '__main__':
     # read_cfg()
     # tst_tdx()
     # tst_tdx01()
-    # tst_tdx02()
-    tst_tdx03()
+    tst_tdx02()
+    # tst_tdx03()
+    # tst_tdx04()
+    # tst_tdx_reader()
     # print(day_1min_slots())
     # print(slot_from_servertime('10:18:30.486'))
     # print(slot_from_servertime('9:18:30.486'))

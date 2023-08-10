@@ -4,7 +4,7 @@ import random
 import time
 from pathlib import Path
 
-from typing import List, Optional, Tuple, Dict
+from typing import List, Optional, Tuple, Dict, Any
 
 import dataclasses
 from pytdx.hq import TdxHq_API
@@ -61,7 +61,7 @@ def read_cfg() -> Tuple[List[Tuple[int, str]], Dict[str, CfgItData]]:
             market = 1 if code[0:2].lower() == 'sh' else 0
             codes.append((market, tmp[0].strip()[2:]))
             cfg[code] = it
-    logi("read_cfg code_num={} codes={} cfg={}".format(len(codes), codes, cfg))
+    logi("read_cfg code_num={} codes={}".format(len(codes), codes))
     return codes, cfg
 
 
@@ -75,17 +75,54 @@ def cal_pre_tmap(cfg: Dict[str, CfgItData]):
 
 
 def cal_open_close(slot: str, pre_tmap: float,
-                   cfg: Dict[str, CfgItData], one_min_map: Dict[str, Dict[str, Bar1MinData]]):
-    # 对stg_cfg列表中每个品种下一个交易日实盘的open_price,close_price,以及Ltg，分别求乘数Open_price*Ltg,close_price*Ltg,然后统计所有品种各乘数的累计值（汇总求和），由此计算出Stg指数的点位的open，close价格
+                   cfg: Dict[str, CfgItData], bars: Dict[str, Bar1MinData]):
+    # 对stg_cfg列表中每个品种下一个交易日实盘的open_price,close_price,以及Ltg，分别求乘数Open_price*Ltg,close_price*Ltg,
+    # 然后统计所有品种各乘数的累计值（汇总求和），由此计算出Stg指数的点位的open，close价格
     # Open = sum(open_price*Ltg)/Pretmap*net0
     # Close = sum(close_price*Ltg)/Pretmap*net0
     open_price = 0.
     close_price = 0.
+    net0 = 0.
+    bar_no_code = []
     for code in cfg.keys():
-        open_price += float(one_min_map[slot][code[2:]].open) * cfg[code].Ltg
-        close_price += float(one_min_map[slot][code[2:]].close) * cfg[code].Ltg
-    open_price = open_price / pre_tmap * cfg[code].net0
-    close_price = close_price / pre_tmap * cfg[code].net0
+        # cfg_code = vt_symbol_to_cfg(code)
+        if code not in bars:
+            bar_no_code.append(code) # loge("bars has no code {}".format(code))
+            continue
+        open_price += float(bars[code].open) * cfg[code].Ltg
+        close_price += float(bars[code].close) * cfg[code].Ltg
+        net0 = cfg[code].net0
+    if bar_no_code:
+        loge("slot {} bars has no code #{} {}".format(slot, len(bar_no_code), bar_no_code))
+    open_price = open_price / pre_tmap * net0
+    close_price = close_price / pre_tmap * net0
+    return open_price, close_price
+
+
+def cal_open_close_new(slot: str, pre_tmap: float,
+                   cfg: Dict[str, CfgItData], mp: Dict[str, Dict[str, Any]]):
+    # 对stg_cfg列表中每个品种下一个交易日实盘的open_price,close_price,以及Ltg，分别求乘数Open_price*Ltg,close_price*Ltg,
+    # 然后统计所有品种各乘数的累计值（汇总求和），由此计算出Stg指数的点位的open，close价格
+    # Open = sum(open_price*Ltg)/Pretmap*net0
+    # Close = sum(close_price*Ltg)/Pretmap*net0
+    open_price = 0.
+    close_price = 0.
+    net0 = 0.
+    bar_no_code = []
+    # print(mp)
+    for code in cfg.keys():
+        # cfg_code = vt_symbol_to_cfg(code)
+        codex = code[2:]
+        if codex not in mp:
+            bar_no_code.append(codex)  # loge("bars has no code {}".format(code))
+            continue
+        open_price += float(mp[codex]['open']) * cfg[code].Ltg
+        close_price += float(mp[codex]['close']) * cfg[code].Ltg
+        net0 = cfg[code].net0
+    if bar_no_code:
+        loge("slot {} bars has no code #{} {}".format(slot, len(bar_no_code), bar_no_code))
+    open_price = open_price / pre_tmap * net0
+    close_price = close_price / pre_tmap * net0
     return open_price, close_price
 
 
@@ -103,13 +140,13 @@ def write_stg_price(slot: str, open_price: float, close_price: float):
     file = file.joinpath("stg_" + datetime.datetime.now().strftime("%Y%m%d") + ".csv")
     if not file.exists():
         with open(file, "w") as fp:
-            fp.write('Code,open,close,dt\n')
+            fp.write('Code,open,close,dt,CreateTime\n')
     open_price = round(open_price, 3)
     close_price = round(close_price, 3)
-    tmp = ['Stg', str(open_price), str(close_price), slot]
-    tmp = ','.join(tmp) + "\n"
+    create_time = datetime.datetime.now().strftime("%H:%M:%S.%f")
+    tmp = ['Stg', str(open_price), str(close_price), slot, create_time, "\n"]
     with open(file, "a") as fp:
-        fp.write(tmp)
+        fp.write(','.join(tmp))
     return
 
 
@@ -174,8 +211,8 @@ def query_ticks(api, ss) -> dict:
         if stocks:
             logd("{} stock quotes num={}".format(i, len(stocks)))
             for s in stocks:
-                slot = datetime.datetime.now().strftime("%H%M")
-                # slot = slot_from_servertime(s['servertime'])
+                # slot = datetime.datetime.now().strftime("%H%M")
+                slot = slot_from_servertime(s['servertime'])
                 # s['servertime'][0:5] if s['servertime'][0] != '9' else s['servertime'][0:4]
                 code = s['code']
                 if slot not in ticks_map:
@@ -196,6 +233,8 @@ def query_ticks(api, ss) -> dict:
 
 
 def need_query():
+    # return True  # test code
+
     if not now_is_tradedate():
         return False
 
