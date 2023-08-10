@@ -2,14 +2,14 @@ import concurrent
 import datetime
 import math
 import time
-from typing import List, Tuple, Dict, Any
+from typing import List, Tuple
 
 from pytdx.hq import TdxHq_API
 from tdx1min.db_ticks import Bar1Min, crt_bar1min
 
 from tdx1min.tdx_cfg import TDX_HQ_HOST
-from tdx1min.tdx_ticks import read_cfg, cal_pre_tmap, day_1min_slots, need_query, CfgItData, write_stg_price, \
-    cal_open_close_new, cur_date
+from tdx1min.tdx_stg import read_cfg, cal_pre_tmap, day_1min_slots, need_query, write_stg_price, cal_open_close_new
+from tdx1min.trade_calendar import cur_date
 from tdx1min.vnlog import logi, loge, logw
 
 

@@ -4,7 +4,8 @@ from typing import Tuple, List, Dict
 
 from pytdx.hq import TdxHq_API
 
-from tdx1min.tdx_ticks import CfgItData, read_cfg, cur_date, day_1min_slots, update_bar1min
+from tdx1min.tdx_stg import CfgItData, read_cfg, day_1min_slots, update_bar1min
+from tdx1min.trade_calendar import cur_date
 from tdx1min.vnlog import loge, logd, logi
 
 from tdx1min.db_ticks import Bar1Min, find_bar1min

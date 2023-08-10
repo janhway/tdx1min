@@ -172,3 +172,8 @@ def check_gznhg_ahead_period():
 def check_market_close():
     current_time = datetime.datetime.now(tz=CHINA_TZ).time()
     return current_time >= trd_time['S_END']
+
+
+def cur_date():
+    n = datetime.datetime.now()
+    return n.strftime("%Y%m%d")
