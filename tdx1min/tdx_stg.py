@@ -6,21 +6,9 @@ from typing import List, Tuple, Dict, Any
 
 import dataclasses
 
-from tdx1min.tdx_cfg import WORK_DIR
+from tdx1min.tdx_cfg import WORK_DIR, BAR_PERIOD
 from tdx1min.vnlog import logi, loge
 from tdx1min.trade_calendar import now_is_tradedate
-
-
-@dataclasses.dataclass
-class Bar1MinData(object):
-    code: str
-    date: str
-    time: str
-    open: float
-    open_st: str  # servertime
-    close: float
-    close_st: str  # servertime
-    fill_date: str = None
 
 
 @dataclasses.dataclass
@@ -64,31 +52,6 @@ def cal_pre_tmap(cfg: Dict[str, CfgItData]):
     for code in cfg.keys():
         pre_tmap += cfg[code].pre_cp * cfg[code].preLtg
     return pre_tmap
-
-
-def cal_open_close(slot: str, pre_tmap: float,
-                   cfg: Dict[str, CfgItData], bars: Dict[str, Bar1MinData]):
-    # 对stg_cfg列表中每个品种下一个交易日实盘的open_price,close_price,以及Ltg，分别求乘数Open_price*Ltg,close_price*Ltg,
-    # 然后统计所有品种各乘数的累计值（汇总求和），由此计算出Stg指数的点位的open，close价格
-    # Open = sum(open_price*Ltg)/Pretmap*net0
-    # Close = sum(close_price*Ltg)/Pretmap*net0
-    open_price = 0.
-    close_price = 0.
-    net0 = 0.
-    bar_no_code = []
-    for code in cfg.keys():
-        # cfg_code = vt_symbol_to_cfg(code)
-        if code not in bars:
-            bar_no_code.append(code) # loge("bars has no code {}".format(code))
-            continue
-        open_price += float(bars[code].open) * cfg[code].Ltg
-        close_price += float(bars[code].close) * cfg[code].Ltg
-        net0 = cfg[code].net0
-    if bar_no_code:
-        loge("slot {} bars has no code #{} {}".format(slot, len(bar_no_code), bar_no_code))
-    open_price = open_price / pre_tmap * net0
-    close_price = close_price / pre_tmap * net0
-    return open_price, close_price
 
 
 def cal_open_close_new(slot: str, pre_tmap: float,
@@ -135,15 +98,16 @@ def write_stg_price(slot: str, open_price: float, close_price: float):
             fp.write('Code,open,close,dt,CreateTime\n')
     open_price = round(open_price, 3)
     close_price = round(close_price, 3)
-    create_time = datetime.datetime.now().strftime("%H:%M:%S.%f")
-    tmp = ['Stg', str(open_price), str(close_price), slot, create_time, "\n"]
+    create_time = datetime.datetime.now().strftime("%H:%M:%S")
+    tmp = ['Stg', str(open_price), str(close_price), slot, create_time]
+    tmp = ','.join(tmp) + "\n"
     with open(file, "a") as fp:
-        fp.write(','.join(tmp))
+        fp.write(tmp)
     return
 
 
 def need_query():
-    # return True  # test code
+    return True  # test code
 
     if not now_is_tradedate():
         return False
@@ -159,7 +123,7 @@ def need_query():
     return False
 
 
-def day_1min_slots():
+def day_bar_slots():
     fstart = datetime.time(9, 25, 0)
     fend = datetime.time(11, 30, 0)
     sstart = datetime.time(13, 0, 0)
@@ -172,10 +136,10 @@ def day_1min_slots():
         if fstart <= start.time() < fend or sstart <= start.time() < send:
             slot = start.strftime("%H%M")
             ret.append(slot)
-        start = start + datetime.timedelta(minutes=1)
+        start = start + datetime.timedelta(minutes=BAR_PERIOD)
     return ret
 
 
 if __name__ == '__main__':
-    # print(day_1min_slots())
+    # print(day_bar_slots())
     pass

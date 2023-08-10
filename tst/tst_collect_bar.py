@@ -10,6 +10,17 @@ from tdx1min.vnlog import LogEngine
 
 HOST = "110.41.147.114"
 
+# 0 5分钟K线
+# 1 15分钟K线
+# 2 30分钟K线
+# 3 1小时K线
+# 4 日K线
+# 5 周K线
+# 6 月K线
+# 7 1分钟
+# 8 1分钟K线
+# 9 日K线
+
 
 def tst_collect_bars():
     api = TdxHq_API()
@@ -22,7 +33,7 @@ def tst_collect_bars():
     logd = partial(l.logger.log, logging.DEBUG)
     with api.connect(ip=HOST, port=7709, time_out=60):
         while 1:
-            data = api.get_security_bars_x(8, mcodes, 0, 2)
+            data = api.get_security_bars_x(0, mcodes, 0, 2)
             data['now'] = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
             # coll.log(json.dumps(data))
             logd(json.dumps(data))

@@ -54,37 +54,56 @@ def drop_database():
     Base.metadata.drop_all(engine)
 
 
-class TdxTick(Base):
-    __tablename__ = 'tdx_tick'
+# class TdxTick(Base):
+#     __tablename__ = 'tdx_tick'
+#
+#     id = Column(Integer, primary_key=True)
+#     code = Column(Text(8))
+#     time = Column(Text(8))  # 1689818859000  毫秒时间戳  1分钟线标识
+#     stime = Column(Text(16))
+#     price = Column(Text(10))
+#     created = Column(Integer, default=cur_timestamp_ms)
+#
+#     index_time_code = Index('idx_time_code', time, code)
 
-    id = Column(Integer, primary_key=True)
-    code = Column(Text(8))
-    time = Column(Text(8))  # 1689818859000  毫秒时间戳  1分钟线标识
-    stime = Column(Text(16))
-    price = Column(Text(10))
-    created = Column(Integer, default=cur_timestamp_ms)
 
-    index_time_code = Index('idx_time_code', time, code)
+# class Bar1Min(Base):
+#     __tablename__ = 'bar_1min'
+#
+#     id = Column(Integer, primary_key=True)
+#     code = Column(Text(8))
+#     date = Column(Text(8))
+#     time = Column(Text(8))
+#     open = Column(Text(10))
+#     open_st = Column(Text(16))  # servertime
+#     close = Column(Text(10))
+#     close_st = Column(Text(16))  # servertime
+#     fill_date = Column(Text(16))
+#     created = Column(Integer, default=cur_timestamp_ms)
+#
+#     def __repr__(self):
+#         return str(self.code) + "_" + str(self.date) + "_" + str(self.time) \
+#             + "_" + str(self.open_st) + "_" + str(self.open) \
+#             + "_" + str(self.close_st) + "_" + str(self.close)
+#
+#     index_time_code = Index('idx_date_time_codex', date, time, code)
 
 
-class Bar1Min(Base):
-    __tablename__ = 'bar_1min'
+class BarMin(Base):
+    __tablename__ = 'bar_min'
 
     id = Column(Integer, primary_key=True)
     code = Column(Text(8))
     date = Column(Text(8))
     time = Column(Text(8))
     open = Column(Text(10))
-    open_st = Column(Text(16))  # servertime
     close = Column(Text(10))
-    close_st = Column(Text(16))  # servertime
     fill_date = Column(Text(16))
     created = Column(Integer, default=cur_timestamp_ms)
 
     def __repr__(self):
         return str(self.code) + "_" + str(self.date) + "_" + str(self.time) \
-            + "_" + str(self.open_st) + "_" + str(self.open) \
-            + "_" + str(self.close_st) + "_" + str(self.close)
+            + "_" + str(self.open) + "_" + str(self.close)
 
     index_time_code = Index('idx_date_time_code', date, time, code)
 
@@ -96,22 +115,36 @@ class Bar1Min(Base):
 # tick_field_names = [column.name for column in _tick_columns]
 
 
-def crt_ticks(ticks):
-    with Session() as session:
-        session.add_all(ticks)
-        session.commit()
+# def crt_ticks(ticks):
+#     with Session() as session:
+#         session.add_all(ticks)
+#         session.commit()
+#
+#
+# def crt_bar1min(bars: List[Bar1Min]):
+#     with Session() as session:
+#         session.add_all(bars)
+#         session.commit()
 
 
-def crt_bar1min(bars: List[Bar1Min]):
+def crt_barmin(bars: List[BarMin]):
     with Session() as session:
         session.add_all(bars)
         session.commit()
 
 
-def find_bar1min(date: str, code: str) -> List[Bar1Min]:
+# def find_bar1min(date: str, code: str) -> List[Bar1Min]:
+#     # date = cur_date()
+#     with Session() as session:
+#         bar_list = session.query(Bar1Min).filter_by(date=date, code=code).all()
+#
+#     return bar_list
+
+
+def find_barmin(date: str, code: str) -> List[BarMin]:
     # date = cur_date()
     with Session() as session:
-        bar_list = session.query(Bar1Min).filter_by(date=date, code=code).all()
+        bar_list = session.query(BarMin).filter_by(date=date, code=code).all()
 
     return bar_list
 
@@ -119,5 +152,5 @@ def find_bar1min(date: str, code: str) -> List[Bar1Min]:
 create_database()
 
 if __name__ == '__main__':
-    bars = find_bar1min("20230802", "600004.SH")
+    bars = find_barmin("20230802", "600004.SH")
     print(bars)

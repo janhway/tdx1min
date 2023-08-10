@@ -10,7 +10,7 @@ import pathlib
 from tdx1min.collect import CollectEngine
 from tdx1min.db_ticks import Bar1Min
 from tdx1min.tdx_bars import ApiPool
-from tdx1min.tdx_stg import read_cfg, Bar1MinData
+from tdx1min.tdx_stg import read_cfg, BarMinData
 from tdx1min.vnlog import logi
 from pytdx.reader import TdxDailyBarReader, TdxFileNotFoundException
 
@@ -226,10 +226,10 @@ def ttt():
             tmp_datetime = d['datetime'].replace("-", "").replace(" ", "")  # ==2023073115:00
             st = tmp_datetime[8:] + ":00.000"  # == 15:00:00.000
             filled_date = tmp_datetime.replace(":", "")  # ==202307311500
-            b: Bar1MinData = Bar1MinData(date="11111", time="slot", code="code",
-                                         open_st=st, open=d['close'],  # open和close使用一样的值填充
-                                         close_st=st, close=d['close'],
-                                         fill_date=filled_date)
+            b: BarMinData = BarMinData(date="11111", time="slot", code="code",
+                                       open_st=st, open=d['close'],  # open和close使用一样的值填充
+                                       close_st=st, close=d['close'],
+                                       fill_date=filled_date)
             db_bar: Bar1Min = Bar1Min(date=b.date, time=b.time, code=b.code,
                                       open_st=b.open_st, open=b.open,
                                       close_st=b.close_st, close=b.close, fill_date=b.fill_date)

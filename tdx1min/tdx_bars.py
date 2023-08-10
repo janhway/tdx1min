@@ -5,10 +5,10 @@ import time
 from typing import List, Tuple
 
 from pytdx.hq import TdxHq_API
-from tdx1min.db_ticks import Bar1Min, crt_bar1min
+from tdx1min.db_ticks import BarMin, crt_barmin
 
-from tdx1min.tdx_cfg import TDX_HQ_HOST
-from tdx1min.tdx_stg import read_cfg, cal_pre_tmap, day_1min_slots, need_query, write_stg_price, cal_open_close_new
+from tdx1min.tdx_cfg import TDX_HQ_HOST, BAR_PERIOD
+from tdx1min.tdx_stg import read_cfg, cal_pre_tmap, day_bar_slots, need_query, write_stg_price, cal_open_close_new
 from tdx1min.trade_calendar import cur_date
 from tdx1min.vnlog import logi, loge, logw
 
@@ -52,7 +52,21 @@ def tdx_slot_equal(tdx_slot_std, tdx_slot_option):
     return False
 
 
-def query_bar1min_worker(mc_list: List[Tuple[int, str]],
+def get_tdx_last_slot(dt=datetime.datetime.now()):
+    # 分钟线我们用开始时间点标识，tdx用结束时间点表示，比如 从09:30到09:31这一分钟，我们用0930表示，tdx用0931表示
+    # 在11:29到11:30这一分钟，在11:30后查询，tdx可能用1300表示
+    m = (dt.minute // BAR_PERIOD) * BAR_PERIOD
+    return f"{dt.hour:02d}{m:02d}"
+
+
+def get_our_last_slot(dt=datetime.datetime.now()):
+    # 分钟线我们用开始时间点标识，tdx用结束时间点表示，比如 从09:30到09:31这一分钟，我们用0930表示，tdx用0931表示
+    my_slot_time = (dt - datetime.timedelta(minutes=BAR_PERIOD))
+    m = (my_slot_time.minute // BAR_PERIOD) * BAR_PERIOD
+    return f"{my_slot_time.hour:02d}{m:02d}"
+
+
+def query_bar_min_worker(mc_list: List[Tuple[int, str]],
                          api: TdxHq_API, exact: bool = True) -> Tuple[dict, List, List]:
     start = time.time()
     logi("host={} num={}".format(api.ip, len(mc_list)))
@@ -63,16 +77,13 @@ def query_bar1min_worker(mc_list: List[Tuple[int, str]],
     mp = {}
     non_exist = []
     lost = []
-    # now = datetime.datetime.now()
-    # 分钟线我们用开始时间点标识，tdx用结束时间点表示，比如 从09:30到09:31这一分钟，我们用0930表示，tdx用0931表示
-    # 在11:29到11:30这一分钟，在11:30后查询，tdx可能用1300表示
-    # my_slot = (now - datetime.timedelta(minutes=1)).strftime("%H%M")
-    tdx_slot_std = datetime.datetime.now().strftime("%H%M")
+    tdx_slot_std = get_tdx_last_slot()
     today = cur_date()
 
     for i in range(0, len(mc_list), 15):
         end = i + 15 if i + 15 < len(mc_list) else len(mc_list)
-        data = api.get_security_bars_x(8, mc_list[i:end], 0, 2)
+        cat = 0 if BAR_PERIOD == 5 else 8
+        data = api.get_security_bars_x(cat, mc_list[i:end], 0, 2)
         if not exact:
             logi("non-exact query. return data={}".format(data))
 
@@ -85,7 +96,7 @@ def query_bar1min_worker(mc_list: List[Tuple[int, str]],
             d: List[dict] = data[code]
             found = False
             for it in d:
-                # 'datetime', '2023-08-09 15:00'
+                # 'datetime', '2023-08-09 15:00'   2023-08-10 14:55
                 tmp_tdx_datetime = it['datetime'].replace("-", "").replace(":", "").replace(" ", "")
                 it_tdx_date = tmp_tdx_datetime[0:8]
                 it_tdx_slot = tmp_tdx_datetime[8:]
@@ -112,9 +123,8 @@ def query_bar1min_worker(mc_list: List[Tuple[int, str]],
     return mp, lost, non_exist
 
 
-def query_bar1min(market_code_list: List[Tuple[int, str]],
+def query_bar_min(market_code_list: List[Tuple[int, str]],
                   api_pool: ApiPool, exact: bool = True) -> Tuple[dict, List, List]:
-
     start = time.time()
 
     min_step = 150
@@ -131,7 +141,7 @@ def query_bar1min(market_code_list: List[Tuple[int, str]],
         for i in range(0, len(market_code_list), step):
             idx = int(i / step)
             end = i + step if i + step < len(market_code_list) else len(market_code_list)
-            future = executor.submit(query_bar1min_worker, market_code_list[i:end], api_pool[idx], exact)
+            future = executor.submit(query_bar_min_worker, market_code_list[i:end], api_pool[idx], exact)
             futures.append(future)
 
     mp = {}
@@ -155,13 +165,14 @@ def query_bar1min(market_code_list: List[Tuple[int, str]],
 def tdx_bar_main():
     mcodes, cfg = read_cfg()
     pre_tmap = cal_pre_tmap(cfg)
-    valid_slots = day_1min_slots()
+    valid_slots = day_bar_slots()
     logi("pre_tmap={} stock num={}".format(pre_tmap, len(mcodes)))
 
     tnow = datetime.datetime.now()
+    m = (tnow.minute // BAR_PERIOD) * BAR_PERIOD
     t = datetime.datetime(year=tnow.year, month=tnow.month, day=tnow.day,
-                          hour=tnow.hour, minute=tnow.minute, second=5, microsecond=0)
-    # t += datetime.timedelta(minutes=1)
+                          hour=tnow.hour, minute=m, second=5, microsecond=0)
+    # t += datetime.timedelta(minutes=BAR_PERIOD)
     que = [t]
     logi("timer que {}".format(que))
     today_date = cur_date()
@@ -182,21 +193,20 @@ def tdx_bar_main():
 
         for tt in exp:
             que.remove(tt)
-            que.append(tt + datetime.timedelta(minutes=1))
+            que.append(tt + datetime.timedelta(minutes=BAR_PERIOD))
 
         if not need_query():
             continue
 
-        now = datetime.datetime.now()
-        last_slot = (now - datetime.timedelta(minutes=1)).strftime("%H%M")
+        last_slot = get_our_last_slot()
         if last_slot not in valid_slots:
-            continue
+            # continue  # comment for test
             pass
 
-        mp, lost, non_exist = query_bar1min(mcodes, api_pool, exact=True)
+        mp, lost, non_exist = query_bar_min(mcodes, api_pool, exact=True)
         if lost:
             lost.extend(non_exist)
-            tmp_mp, tmp_lost, non_exist = query_bar1min(lost, api_pool, exact=False)
+            tmp_mp, tmp_lost, non_exist = query_bar_min(lost, api_pool, exact=False)
             assert len(lost) == len(tmp_mp.keys())
             mp.update(tmp_mp)
 
@@ -212,11 +222,10 @@ def tdx_bar_main():
         db_bars = []
         for c in mp:
             b: dict = mp[c]
-            db_bar: Bar1Min = Bar1Min(date=today_date, time=last_slot, code=c,
-                                      open_st=last_slot, open=b['open'],
-                                      close_st=last_slot, close=b['close'], fill_date=b['datetime'])
+            db_bar: BarMin = BarMin(date=today_date, time=last_slot, code=c,
+                                    open=b['open'], close=b['close'], fill_date=b['datetime'])
             db_bars.append(db_bar)
-        crt_bar1min(db_bars)
+        crt_barmin(db_bars)
         spent = round(time.time() - start, 3)
         logi("save #{} bars to db spent {} seconds".format(len(mp), spent))
         if spent >= 1.:
@@ -224,11 +233,11 @@ def tdx_bar_main():
         # end save db. option
 
 
-def tst_query_bar1min():
+def tst_query_barmin():
     market_code_list, _ = read_cfg()
     api_pool: ApiPool = ApiPool(5)
     api_pool.start()
-    date = query_bar1min(market_code_list, api_pool)
+    date = query_bar_min(market_code_list, api_pool)
     print(date)
     api_pool.stop()
 

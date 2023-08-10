@@ -2,8 +2,9 @@ import os
 import random
 from pathlib import Path
 
-
 from typing import Tuple
+
+BAR_PERIOD = 5
 
 
 def _tdx_hq_host(position: str = None) -> dict:
