@@ -7,7 +7,7 @@ from typing import List, Tuple, Dict, Any
 import dataclasses
 
 from tdx1min.tdx_cfg import WORK_DIR, BAR_PERIOD
-from tdx1min.vnlog import logi, loge
+from tdx1min.vnlog import logi, loge, logw
 from tdx1min.trade_calendar import now_is_tradedate
 
 
@@ -93,16 +93,36 @@ def get_stg_path():
 def write_stg_price(slot: str, open_price: float, close_price: float):
     file = get_stg_path()
     file = file.joinpath("stg_" + datetime.datetime.now().strftime("%Y%m%d") + ".csv")
+
+    title = 'Code,open,close,dt,CreateTime\n'
+
     if not file.exists():
         with open(file, "w") as fp:
-            fp.write('Code,open,close,dt,CreateTime\n')
+            fp.write(title)
+
     open_price = round(open_price, 3)
     close_price = round(close_price, 3)
     create_time = datetime.datetime.now().strftime("%H:%M:%S")
     tmp = ['Stg', str(open_price), str(close_price), slot, create_time]
-    tmp = ','.join(tmp) + "\n"
+    new_last_line = ','.join(tmp) + "\n"
+
+    with open(file, "r") as fp:
+        lines = fp.readlines()
+
+    if lines:
+        last_line = lines[-1]
+        info = last_line.split(",")
+        if info[3] == slot:
+            logw("dup slot {}. replace it.".format(slot))
+            lines[-1] = new_last_line
+            with open(file, "w") as fp:
+                fp.writelines(lines)
+            return
+
     with open(file, "a") as fp:
-        fp.write(tmp)
+        if not lines:
+            fp.write(title)
+        fp.write(new_last_line)
     return
 
 
