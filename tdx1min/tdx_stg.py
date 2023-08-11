@@ -23,8 +23,9 @@ class CfgItData(object):
     net0: float
 
 
-def read_cfg() -> Tuple[List[Tuple[int, str]], Dict[str, CfgItData]]:
-    path = os.path.dirname(__file__)
+def read_cfg(path=None) -> Tuple[List[Tuple[int, str]], Dict[str, CfgItData]]:
+    if not path:
+        path = os.path.dirname(__file__)
     path = os.path.join(path, 'Stgtrd_cfg.csv')
 
     codes = []
@@ -91,9 +92,10 @@ def get_stg_path():
     return folder_path
 
 
-def write_stg_price(slot_time: str, open_price: float, close_price: float):
-    file = get_stg_path()
-    file = file.joinpath("stg_" + datetime.datetime.now().strftime("%Y%m%d") + ".csv")
+def write_stg_price(slot_time: str, open_price: float, close_price: float, output_path=None):
+    if not output_path:
+        output_path = get_stg_path()
+    file = output_path.joinpath("stg_" + datetime.datetime.now().strftime("%Y%m%d") + ".csv")
 
     title = 'Code,open,close,dt,CreateTime\n'
 

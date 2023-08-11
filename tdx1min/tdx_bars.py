@@ -9,7 +9,7 @@ from tdx1min.db_ticks import BarMin, crt_barmin
 
 from tdx1min.tdx_cfg import TDX_HQ_HOST, BAR_PERIOD
 from tdx1min.tdx_stg import read_cfg, cal_pre_tmap, day_bar_slots, need_query, write_stg_price, cal_open_close_new
-from tdx1min.trade_calendar import cur_date
+from tdx1min.trade_calendar import cur_date, now_is_tradedate
 from tdx1min.vnlog import logi, loge, logw
 
 
@@ -166,8 +166,23 @@ def query_bar_min(market_code_list: List[Tuple[int, str]],
     return mp, lost, non_exist
 
 
-def tdx_bar_main():
-    mcodes, cfg = read_cfg()
+def check_run_period():
+    """"""
+    if not now_is_tradedate():
+        return False
+
+    start = datetime.time(8, 45)
+    end = datetime.time(16, 0)
+    current_time = datetime.datetime.now().time()
+
+    if start <= current_time <= end:
+        return True
+
+    return False
+
+
+def tdx_bars(api_pool: ApiPool, stgtrd_cfg_path=None, output_path=None):
+    mcodes, cfg = read_cfg(stgtrd_cfg_path)
     pre_tmap = cal_pre_tmap(cfg)
     valid_slots = day_bar_slots()
     logi("pre_tmap={} stock num={}".format(pre_tmap, len(mcodes)))
@@ -181,12 +196,9 @@ def tdx_bar_main():
     logi("timer que {}".format(que))
     today_date = cur_date()
 
-    api_pool: ApiPool = ApiPool(5)
-    api_pool.start()
-
     mp0925 = None
     mp1455 = None
-    while True:
+    while check_run_period():
         now = datetime.datetime.now()
         exp = []
         for tt in que:
@@ -241,7 +253,7 @@ def tdx_bar_main():
         # 计算和保存stg指数信息
         # start = time.time()
         stg_open, stg_close = cal_open_close_new(last_slot, pre_tmap, cfg, mp)
-        write_stg_price(last_slot, stg_open, stg_close)
+        write_stg_price(last_slot, stg_open, stg_close, output_path=output_path)
         # spent = time.time() - start
         # logi("cal stg {} spent={}".format(last_slot, round(spent, 3)))
 
@@ -261,6 +273,20 @@ def tdx_bar_main():
         # end save db. option
 
 
+def tdx_bar_main(stgtrd_cfg_path=None, output_path=None):
+    api_pool: ApiPool = ApiPool(5)
+    api_pool.start()
+
+    try:
+        tdx_bars(api_pool, stgtrd_cfg_path, output_path)
+
+    except KeyboardInterrupt:
+        logi("receive KeyboardInterrupt")
+
+    logi("quit child process.")
+    api_pool.stop()
+
+
 def tst_query_barmin():
     market_code_list, _ = read_cfg()
     api_pool: ApiPool = ApiPool(5)
@@ -271,5 +297,8 @@ def tst_query_barmin():
 
 
 if __name__ == '__main__':
-    tdx_bar_main()
+    try:
+        tdx_bar_main()
+    except Exception as e:
+        print(e)
     pass
