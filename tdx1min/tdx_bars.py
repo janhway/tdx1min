@@ -238,10 +238,9 @@ def tdx_bars(api_pool: ApiPool, stgtrd_cfg_path=None, output_path=None):
             assert len(lost) == len(tmp_mp.keys())
             mp.update(tmp_mp)
 
-        # 暂时注释掉合并功能 因为 9点之前查询的都会返回 0930-0935 这条K线  不太合理
-        # if last_slot == '0925':
-        #     mp0925 = mp
-        #     continue
+        if last_slot == '0925':
+            mp0925 = mp
+            continue
 
         if last_slot == '1455':
             mp1455 = mp
@@ -252,7 +251,9 @@ def tdx_bars(api_pool: ApiPool, stgtrd_cfg_path=None, output_path=None):
             logi("merge slot 0925 and 0930")
             for mp_code in mp:
                 if mp_code in mp0925:
-                    mp[mp_code]['open'] = mp0925[mp_code]['open']
+                    # 暂时注释掉合并功能 因为 9点之前查询的都会返回 0930-0935 这条K线  不太合理
+                    # mp[mp_code]['open'] = mp0925[mp_code]['open']
+                    pass
             mp0925 = None
 
         if last_slot == '1500' and mp1455 is not None:

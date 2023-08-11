@@ -29,8 +29,8 @@ def check_barmin_from_db():
     today = cur_date()
 
     valid_slots = day_bar_slots()
-    sel_slot = [str(slot) for slot in range(1300, 1500, 1) if str(slot) in valid_slots]
-
+    sel_slot = [f"{slot:04d}" for slot in range(930, 1500, 5) if f"{slot:04d}" in valid_slots]
+    logi("len(sel_slot)={} len(valid_slots)={} sel_slot={}".format(len(sel_slot), len(valid_slots), sel_slot))
     api = TdxHq_API()
 
     with api.connect(ip=HOST, port=7709, time_out=60):
@@ -42,7 +42,7 @@ def check_barmin_from_db():
                 continue
             logi(">>> code={} len(db_bars_x)={}".format(code, len(db_bars_x)))
             cat = 0 if BAR_PERIOD==5 else 8
-            data = api.get_security_bars(cat, market, code, 0, 250)
+            data = api.get_security_bars(cat, market, code, 0, 270//BAR_PERIOD)
             # logd(data)
             # [OrderedDict([('open', 14.48), ('close', 14.5), ('high', 14.5), ('low', 14.48), ('vol', 22900.0),
             #               ('amount', 331680.0), ('year', 2023), ('month', 8), ('day', 1),
@@ -66,8 +66,8 @@ def check_barmin_from_db():
             for b in db_bars_x:
                 if b.time in sel_slot:
                     db_bars.append(b)
-            if len(db_bars) != len(sel_slot):
-                loge("{} {}".format(len(db_bars), len(sel_slot)))
+            # if len(db_bars) != len(sel_slot):
+            #     loge("{} {}".format(len(db_bars), len(sel_slot)))
 
             match_count = 0
             mis_open = 0
