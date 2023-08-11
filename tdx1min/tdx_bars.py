@@ -167,13 +167,22 @@ def query_bar_min(market_code_list: List[Tuple[int, str]],
     return mp, lost, non_exist
 
 
+RUN_STATE = True
+
+
+def set_run_state(state):
+    global RUN_STATE
+    RUN_STATE = state
+
+
 def check_run_period():
     """"""
     if not now_is_tradedate():
         return False
-
+    if not RUN_STATE:
+        return False
     start = datetime.time(8, 45)
-    end = datetime.time(21, 0)
+    end = datetime.time(17, 0)
     current_time = datetime.datetime.now().time()
 
     if start <= current_time <= end:

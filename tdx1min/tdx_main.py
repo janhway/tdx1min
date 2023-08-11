@@ -1,55 +1,53 @@
-import multiprocessing
-import datetime
 import sys
+import threading
 import time
 
-from tdx1min.tdx_bars import check_run_period, tdx_bar_main
+from tdx1min.tdx_bars import check_run_period, tdx_bar_main, set_run_state
 from tdx1min.vnlog import logi, loge
 
 
 def stg_main():
-    """
-    Running in the parent process.
-    """
-    logi("start father process")
+
+    logi("start main thread.")
 
     # 检查是否提供了足够的参数
-    if len(sys.argv) < 2:
-        logi("Usage: python script_name.py arg1 arg2 ...")
-        sys.exit(1)
+    # if len(sys.argv) < 2:
+    #     logi("Usage: python script_name.py arg1 arg2 ...")
+    #     sys.exit(1)
 
     # 获取命令行参数
     script_name = sys.argv[0]
     args = sys.argv[1:]
 
-    # 打印脚本名
-    logi("Script name:{}".format(script_name))
+    logi("script name:{} args:{}".format(script_name, args))
 
-    # 打印传递的参数
-    logi("Arguments:{}".format(args))
-
-    stgtrd_cfg_path = sys.argv[1]
+    stgtrd_cfg_path = None
     output_path = None
+    if len(sys.argv) >= 2:
+        stgtrd_cfg_path = sys.argv[1]
     if len(sys.argv) >= 3:
         output_path = sys.argv[2]
 
     logi("stgtrd_cfg_path={} output_path={}".format(stgtrd_cfg_path, output_path))
 
-    child_process = None
+    child_thread = None
+    set_run_state(True)
 
     try:
         while True:
             trading = check_run_period()
 
             # Start child process in trading period
-            if trading and child_process is None:
+            if trading and child_thread is None:
                 logi("start child")
-                child_process = multiprocessing.Process(target=tdx_bar_main, args=(stgtrd_cfg_path, output_path))
-                child_process.start()
+                # 创建线程并设置为守护线程
+                child_thread = threading.Thread(target=tdx_bar_main, args=(stgtrd_cfg_path, output_path))
+                child_thread.daemon = True
+                child_thread.start()
                 logi("start child ok")
-            elif not trading and child_process is not None:
-                if not child_process.is_alive():
-                    child_process = None
+            elif not trading and child_thread is not None:
+                if not child_thread.is_alive():
+                    child_thread = None
                     logi("child stop ok")
 
             time.sleep(5)
@@ -58,9 +56,9 @@ def stg_main():
     except Exception as e:
         loge("".format(e))
     finally:
-        if child_process is not None:
-            child_process.terminate()
-            child_process.join()
+        if child_thread is not None:
+            set_run_state(False)
+            child_thread.join()
             logi("finish waiting child")
         logi("main process quit.")
 
