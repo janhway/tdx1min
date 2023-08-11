@@ -38,7 +38,7 @@ def tst_collect_bars():
             data['now'] = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
             coll.log(json.dumps(data))
             # logd(json.dumps(data))
-            time.sleep(6)
+            time.sleep(10)
 
 
 if __name__ == '__main__':

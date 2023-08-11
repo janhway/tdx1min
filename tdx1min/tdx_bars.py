@@ -89,7 +89,7 @@ def query_bar_min_worker(mc_list: List[Tuple[int, str]],
         end = i + 15 if i + 15 < len(mc_list) else len(mc_list)
         cat = 0 if BAR_PERIOD == 5 else 8
         data = api.get_security_bars_x(cat, mc_list[i:end], 0, 2)
-        if not exact:
+        if not exact and (not tdx_slot_std > '1500'):
             logi("non-exact query. return data={}".format(data))
 
         for market, code in mc_list[i:end]:
@@ -238,9 +238,10 @@ def tdx_bars(api_pool: ApiPool, stgtrd_cfg_path=None, output_path=None):
             assert len(lost) == len(tmp_mp.keys())
             mp.update(tmp_mp)
 
-        if last_slot == '0925':
-            mp0925 = mp
-            continue
+        # 暂时注释掉合并功能 因为 9点之前查询的都会返回 0930-0935 这条K线  不太合理
+        # if last_slot == '0925':
+        #     mp0925 = mp
+        #     continue
 
         if last_slot == '1455':
             mp1455 = mp
@@ -252,12 +253,14 @@ def tdx_bars(api_pool: ApiPool, stgtrd_cfg_path=None, output_path=None):
             for mp_code in mp:
                 if mp_code in mp0925:
                     mp[mp_code]['open'] = mp0925[mp_code]['open']
+            mp0925 = None
 
         if last_slot == '1500' and mp1455 is not None:
             logi("merge slot 1455 and 1500")
             for mp_code in mp:
                 if mp_code in mp1455:
                     mp[mp_code]['open'] = mp1455[mp_code]['open']
+            mp1455 = None
             last_slot = '1455'
 
         # 计算和保存stg指数信息
