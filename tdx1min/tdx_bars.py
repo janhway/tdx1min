@@ -204,7 +204,7 @@ def tdx_bar_main():
 
         last_slot = get_our_last_slot()
         if last_slot not in valid_slots:
-            # continue  # comment for test
+            continue  # comment for test
             pass
 
         mp, lost, non_exist = query_bar_min(mcodes, api_pool, exact=True)

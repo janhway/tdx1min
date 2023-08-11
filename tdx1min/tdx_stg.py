@@ -129,7 +129,7 @@ def write_stg_price(slot: str, open_price: float, close_price: float):
 
 
 def need_query():
-    return True  # test code
+    # return True  # comment for test code
 
     if not now_is_tradedate():
         return False
