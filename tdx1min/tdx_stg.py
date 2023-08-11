@@ -24,9 +24,13 @@ class CfgItData(object):
 
 
 def read_cfg(path=None) -> Tuple[List[Tuple[int, str]], Dict[str, CfgItData]]:
+    fn = 'Stgtrd_cfg.csv'
     if not path:
-        path = os.path.dirname(__file__)
-    path = os.path.join(path, 'Stgtrd_cfg.csv')
+        path = os.path.join(os.path.dirname(__file__), fn)
+        if not os.path.exists(path):
+            path = os.path.join(r"C:\ftp\params", fn)
+    else:
+        path = os.path.join(path, 'Stgtrd_cfg.csv')
 
     codes = []
     cfg: Dict[str, CfgItData] = {}

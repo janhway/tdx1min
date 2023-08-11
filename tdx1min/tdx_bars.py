@@ -1,6 +1,7 @@
 import concurrent
 import datetime
 import math
+import sys
 import time
 from typing import List, Tuple
 
@@ -172,7 +173,7 @@ def check_run_period():
         return False
 
     start = datetime.time(8, 45)
-    end = datetime.time(16, 0)
+    end = datetime.time(21, 0)
     current_time = datetime.datetime.now().time()
 
     if start <= current_time <= end:
@@ -297,8 +298,5 @@ def tst_query_barmin():
 
 
 if __name__ == '__main__':
-    try:
-        tdx_bar_main()
-    except Exception as e:
-        print(e)
-    pass
+    print("argv={}".format(sys.argv))
+    tdx_bar_main()

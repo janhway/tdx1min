@@ -47,9 +47,7 @@ def stg_main():
                 child_process = multiprocessing.Process(target=tdx_bar_main, args=(stgtrd_cfg_path, output_path))
                 child_process.start()
                 logi("start child ok")
-
-            # 非记录时间则退出子进程
-            if not trading and child_process is not None:
+            elif not trading and child_process is not None:
                 if not child_process.is_alive():
                     child_process = None
                     logi("child stop ok")
