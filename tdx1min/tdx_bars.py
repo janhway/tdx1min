@@ -185,6 +185,7 @@ def tdx_bar_main():
     api_pool.start()
 
     mp0925 = None
+    mp1455 = None
     while True:
         now = datetime.datetime.now()
         exp = []
@@ -215,15 +216,27 @@ def tdx_bar_main():
             assert len(lost) == len(tmp_mp.keys())
             mp.update(tmp_mp)
 
-        if lost == '0925':
+        if last_slot == '0925':
             mp0925 = mp
             continue
 
+        if last_slot == '1455':
+            mp1455 = mp
+            continue
+
         # 第一个应该是9.25-9.35 标记为0930
-        if lost == '0930' and mp0925 is not None:
+        if last_slot == '0930' and mp0925 is not None:
+            logi("merge slot 0925 and 0930")
             for mp_code in mp:
                 if mp_code in mp0925:
                     mp[mp_code]['open'] = mp0925[mp_code]['open']
+
+        if last_slot == '1500' and mp1455 is not None:
+            logi("merge slot 1455 and 1500")
+            for mp_code in mp:
+                if mp_code in mp1455:
+                    mp[mp_code]['open'] = mp1455[mp_code]['open']
+            last_slot = '1455'
 
         # 计算和保存stg指数信息
         # start = time.time()

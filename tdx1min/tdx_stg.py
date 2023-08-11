@@ -8,7 +8,7 @@ import dataclasses
 
 from tdx1min.tdx_cfg import WORK_DIR, BAR_PERIOD
 from tdx1min.vnlog import logi, loge, logw
-from tdx1min.trade_calendar import now_is_tradedate
+from tdx1min.trade_calendar import now_is_tradedate, cur_date
 
 
 @dataclasses.dataclass
@@ -25,7 +25,7 @@ class CfgItData(object):
 
 def read_cfg() -> Tuple[List[Tuple[int, str]], Dict[str, CfgItData]]:
     path = os.path.dirname(__file__)
-    path = os.path.join(path, 'Actvty_cfg.csv')
+    path = os.path.join(path, 'Stgtrd_cfg.csv')
 
     codes = []
     cfg: Dict[str, CfgItData] = {}
@@ -42,6 +42,7 @@ def read_cfg() -> Tuple[List[Tuple[int, str]], Dict[str, CfgItData]]:
             codes.append((market, tmp[0].strip()[2:]))
             cfg[code] = it
     logi("read_cfg code_num={} codes={}".format(len(codes), codes))
+    logi("cfg={}".format(cfg))
     return codes, cfg
 
 
@@ -90,7 +91,7 @@ def get_stg_path():
     return folder_path
 
 
-def write_stg_price(slot: str, open_price: float, close_price: float):
+def write_stg_price(slot_time: str, open_price: float, close_price: float):
     file = get_stg_path()
     file = file.joinpath("stg_" + datetime.datetime.now().strftime("%Y%m%d") + ".csv")
 
@@ -100,8 +101,10 @@ def write_stg_price(slot: str, open_price: float, close_price: float):
         with open(file, "w") as fp:
             fp.write(title)
 
-    open_price = round(open_price, 3)
-    close_price = round(close_price, 3)
+    slot = cur_date() + slot_time
+
+    open_price = round(open_price, 5)
+    close_price = round(close_price, 5)
     create_time = datetime.datetime.now().strftime("%H:%M:%S")
     tmp = ['Stg', str(open_price), str(close_price), slot, create_time]
     new_last_line = ','.join(tmp) + "\n"
@@ -114,6 +117,10 @@ def write_stg_price(slot: str, open_price: float, close_price: float):
         if last_line:
             info = last_line.split(",")
             if info[3] == slot:
+                if info[1] == str(open_price) and info[2] == str(close_price):
+                    logi("dup equal slot {}.  do nothing".format(slot))
+                    return
+
                 logw("dup slot {}. replace it.".format(slot))
                 lines[-1] = new_last_line
                 with open(file, "w") as fp:
@@ -134,10 +141,10 @@ def need_query():
     if not now_is_tradedate():
         return False
 
-    fstart = datetime.time(9, 24, 59)
+    fstart = datetime.time(9, 19, 59)
     fend = datetime.time(11, 30, 59)
     sstart = datetime.time(12, 59, 59)
-    send = datetime.time(15, 0, 59)
+    send = datetime.time(15, 5, 59)
 
     current_time = datetime.datetime.now().time()
     if (fstart <= current_time <= fend) or (sstart <= current_time <= send):
@@ -149,7 +156,7 @@ def day_bar_slots():
     fstart = datetime.time(9, 25, 0)
     fend = datetime.time(11, 30, 0)
     sstart = datetime.time(13, 0, 0)
-    send = datetime.time(15, 0, 0)
+    send = datetime.time(15, 5, 0)
 
     ret = []
     start = datetime.datetime(year=1900, month=1, day=1,
