@@ -184,6 +184,7 @@ def tdx_bar_main():
     api_pool: ApiPool = ApiPool(5)
     api_pool.start()
 
+    mp0925 = None
     while True:
         now = datetime.datetime.now()
         exp = []
@@ -213,6 +214,16 @@ def tdx_bar_main():
             tmp_mp, tmp_lost, non_exist = query_bar_min(lost, api_pool, exact=False)
             assert len(lost) == len(tmp_mp.keys())
             mp.update(tmp_mp)
+
+        if lost == '0925':
+            mp0925 = mp
+            continue
+
+        # 第一个应该是9.25-9.35 标记为0930
+        if lost == '0930' and mp0925 is not None:
+            for mp_code in mp:
+                if mp_code in mp0925:
+                    mp[mp_code]['open'] = mp0925[mp_code]['open']
 
         # 计算和保存stg指数信息
         # start = time.time()
