@@ -10,6 +10,10 @@ BAR_PERIOD = 5
 def _tdx_hq_host(position: str = None) -> dict:
     file = os.path.dirname(__file__)
     file = os.path.join(file, 'connect.cfg')
+    tmp_path = Path(file)
+    if not tmp_path.exists():
+        file = Path.cwd()
+        file = os.path.join(file, 'connect.cfg')
 
     hq_hosts: dict = {}
 

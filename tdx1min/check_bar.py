@@ -10,17 +10,17 @@ from tdx1min.tdx_cfg import BAR_PERIOD
 
 from tdx1min.tdx_stg import CfgItData, read_cfg, day_bar_slots
 from tdx1min.trade_calendar import cur_date
-from tdx1min.vnlog import LogEngine
+from tdx1min.vnlog import logi,logw,loge,logd
 
 from tdx1min.db_ticks import BarMin, find_barmin
 
 HOST = "110.41.147.114"
 
-xxLog = LogEngine(f"check_bar_{cur_date()}.log")
-logd = partial(xxLog.logger.log, logging.DEBUG)
-logi = partial(xxLog.logger.log, logging.INFO)
-logw = partial(xxLog.logger.log, logging.WARN)
-loge = partial(xxLog.logger.log, logging.ERROR)
+# xxLog = LogEngine(f"check_bar_{cur_date()}.log")
+# logd = partial(xxLog.logger.log, logging.DEBUG)
+# logi = partial(xxLog.logger.log, logging.INFO)
+# logw = partial(xxLog.logger.log, logging.WARN)
+# loge = partial(xxLog.logger.log, logging.ERROR)
 
 
 def check_barmin_from_db():

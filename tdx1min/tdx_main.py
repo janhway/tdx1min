@@ -4,7 +4,7 @@ import sys
 import time
 
 from tdx1min.tdx_bars import check_run_period, tdx_bar_main
-from tdx1min.vnlog import logi
+from tdx1min.vnlog import logi, loge
 
 
 def stg_main():
@@ -57,6 +57,8 @@ def stg_main():
             time.sleep(5)
     except KeyboardInterrupt:
         logi("receive KeyboardInterrupt")
+    except Exception as e:
+        loge("".format(e))
     finally:
         if child_process is not None:
             child_process.terminate()

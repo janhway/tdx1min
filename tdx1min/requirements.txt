@@ -1,0 +1,5 @@
+SQLAlchemy==1.4.49
+pandas==1.1.5
+dataclasses==0.8
+tzdata
+tzlocal

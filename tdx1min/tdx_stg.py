@@ -94,8 +94,10 @@ def get_stg_path():
 
 def write_stg_price(slot_time: str, open_price: float, close_price: float, output_path=None):
     if not output_path:
-        output_path = get_stg_path()
-    file = output_path.joinpath("stg_" + datetime.datetime.now().strftime("%Y%m%d") + ".csv")
+        file = get_stg_path()
+    else:
+        file = Path(output_path)
+    file = file.joinpath("stg_" + datetime.datetime.now().strftime("%Y%m%d") + ".csv")
 
     title = 'Code,open,close,dt,CreateTime\n'
 

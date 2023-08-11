@@ -122,7 +122,7 @@ def query_bar_min_worker(mc_list: List[Tuple[int, str]],
 
     spent = round(time.time() - start, 2)
     logi("code num={} spent {} seconds. lost={} non_exist={} host={}"
-         .format(len(mc_list), spent, api.ip, lost, non_exist))
+         .format(len(mc_list), spent, lost, non_exist, api.ip))
 
     return mp, lost, non_exist
 
