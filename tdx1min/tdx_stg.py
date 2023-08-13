@@ -46,8 +46,9 @@ def read_cfg(path=None) -> Tuple[List[Tuple[int, str]], Dict[str, CfgItData]]:
             market = 1 if code[0:2].lower() == 'sh' else 0
             codes.append((market, tmp[0].strip()[2:]))
             cfg[code] = it
-    logi("read_cfg code_num={} codes={}".format(len(codes), codes))
-    logi("cfg={}".format(cfg))
+    logi("read_cfg code_num={}".format(len(codes)))
+    # logi("read_cfg codes={}".format(codes))
+    # logi("read_cfg cfg={}".format(cfg))
     return codes, cfg
 
 

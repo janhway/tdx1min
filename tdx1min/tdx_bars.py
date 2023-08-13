@@ -11,7 +11,7 @@ from tdx1min.db_ticks import BarMin, crt_barmin
 
 from tdx1min.tdx_cfg import BAR_PERIOD
 from tdx1min.tdx_stg import read_cfg, cal_pre_tmap, day_bar_slots, write_stg_price, cal_open_close_new
-from tdx1min.trade_calendar import cur_date, now_is_tradedate
+from tdx1min.trade_calendar import IS_TEST_RUN, cur_date, now_is_tradedate
 from tdx1min.vnlog import logi, loge, logw
 
 
@@ -47,8 +47,12 @@ def query_bar_min_worker(mc_list: List[Tuple[int, str]],
     start = time.time()
     logi("host={} num={}".format(api.ip, len(mc_list)))
 
+    xnum = 10
     if not exact:
-        logi("non-exact query. market_code_list={}".format(mc_list))
+        if len(mc_list) < xnum:
+            logi("non-exact query. market_code_list={}".format(mc_list))
+        else:
+            logi("non-exact query. market_code_num={}".format(len(mc_list)))
 
     mp = {}
     non_exist = []
@@ -59,12 +63,22 @@ def query_bar_min_worker(mc_list: List[Tuple[int, str]],
     for i in range(0, len(mc_list), 15):
         end = i + 15 if i + 15 < len(mc_list) else len(mc_list)
         cat = 0 if BAR_PERIOD == 5 else 8
-        data = api.get_security_bars_x(cat, mc_list[i:end], 0, 2)
-        if not exact and (not tdx_slot_std > '1500'):
-            logi("non-exact query. return data={}".format(data))
+        mc_slice = mc_list[i:end]
+        data = api.get_security_bars_x(cat, mc_slice, 0, 2)
+        if not data:
+            loge("query return nothing, len(mc_list)={}. host={}".format(len(mc_slice), api.ip))
+            non_exist.extend(mc_slice)
+            continue
 
-        for market, code in mc_list[i:end]:
-            if not data or code not in data:
+        if not exact:
+            if len(data.keys()) < xnum:
+                logi("non-exact query. return data={}".format(data))
+            else:
+                logi("non-exact query. return data_key_num={}".format(len(data.keys())))
+
+        for market, code in mc_slice:
+            # api故障时查询的data可能为None
+            if code not in data:
                 non_exist.append((market, code))
                 loge("code {} has no bar info.".format(code))
                 continue
@@ -88,13 +102,16 @@ def query_bar_min_worker(mc_list: List[Tuple[int, str]],
 
             if not found:
                 lost.append((market, code))
-                loge("code {} has no valid data {}  exact={}".format(code, d, exact))
-
-            # mp[code] = data[code][0] # test code
+                if not IS_TEST_RUN:
+                    loge("code {} has no valid data {}  exact={}".format(code, d, exact))
 
     spent = round(time.time() - start, 2)
-    logi("code num={} spent {} seconds. lost={} non_exist={} host={}"
-         .format(len(mc_list), spent, lost, non_exist, api.ip))
+    if len(lost) < xnum and len(non_exist) < xnum:
+        logi("code num={} spent {} seconds. lost={} non_exist={} host={}"
+             .format(len(mc_list), spent, lost, non_exist, api.ip))
+    else:
+        logi("code num={} spent {} seconds. lost_num={} non_exist_num={} host={}"
+             .format(len(mc_list), spent, len(lost), len(non_exist), api.ip))
 
     return mp, lost, non_exist
 
@@ -103,7 +120,7 @@ def query_bar_min(market_code_list: List[Tuple[int, str]],
                   api_pool: ApiPool, exact: bool = True) -> Tuple[dict, List, List]:
     start = time.time()
     min_step = 150
-
+    xnum = 10
     pl: List[TdxHq_API] = api_pool.alloc_api(5)
     step = math.ceil(len(market_code_list) / len(pl))
     max_workers = len(pl)
@@ -139,8 +156,12 @@ def query_bar_min(market_code_list: List[Tuple[int, str]],
         api_pool.release_api()
 
     spent = round(time.time() - start, 2)
-    logi("code num={} spent {} seconds. lost={} non_exist={}".format(len(market_code_list), spent, lost, non_exist))
-
+    if len(lost) < xnum and len(non_exist) < xnum:
+        logi("code num={} spent {} seconds. lost={} non_exist={}"
+             .format(len(market_code_list), spent, lost, non_exist))
+    else:
+        logi("code num={} spent {} seconds. lost_num={} non_exist_num={}"
+             .format(len(market_code_list), spent, len(lost), len(non_exist)))
     return mp, lost, non_exist
 
 
@@ -156,8 +177,13 @@ def check_run_period():
     """"""
     if not now_is_tradedate():
         return False
+
     if not RUN_STATE:
         return False
+
+    if IS_TEST_RUN:
+        return True
+
     start = datetime.time(8, 45)
     end = datetime.time(17, 0)
     current_time = datetime.datetime.now().time()
@@ -209,9 +235,8 @@ def tdx_bars(api_pool: ApiPool, stgtrd_cfg_path=None, output_path=None):
             continue
 
         last_slot = get_our_last_slot()
-        if last_slot not in valid_slots:
-            continue  # comment for test
-            pass
+        if not IS_TEST_RUN and last_slot not in valid_slots:
+            continue
 
         mp, lost, non_exist = query_bar_min(mcodes, api_pool, exact=True)
         if lost:
@@ -244,7 +269,7 @@ def tdx_bars(api_pool: ApiPool, stgtrd_cfg_path=None, output_path=None):
 
 
 def tdx_bar_main(stgtrd_cfg_path=None, output_path=None):
-    api_pool: ApiPool = ApiPool(5)
+    api_pool: ApiPool = ApiPool(7)
     api_pool.start()
 
     try:

@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import List, Tuple, Dict, Optional
 
 from pytdx.hq import TdxHq_API
+from tdx1min.trade_calendar import IS_TEST_RUN
 from tdx1min.vnlog import loge, logd, logi
 
 
@@ -63,8 +64,8 @@ def _tdx_hq_host(position: str = None) -> dict:
 
 
 def get_hq_hosts() -> Tuple[List[str], Dict[str, Tuple[str, str, int]]]:
-    use_test_host = 1
-    if use_test_host:
+    use_test_host = 0
+    if use_test_host and IS_TEST_RUN:
         from pytdx.config.hosts import hq_hosts
         hosts = hq_hosts
     else:
