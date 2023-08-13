@@ -53,7 +53,7 @@ class LogEngine(object):
 
         self.add_null_handler()
 
-        today_date = datetime.now().strftime("%Y%m%d")
+        today_date = datetime.now().strftime("%Y%m%d_%H%M%S")
         if not file_name:
             filename = f"vt_{today_date}.log"
         else:
@@ -105,7 +105,7 @@ class LogEngine(object):
         file_handler.setFormatter(self.formatter)
         self.logger.addHandler(file_handler)
 
-    def log(self, level: int, msg: str) -> None:
+    def log(self, level: int, msg: str) -> None:  # 没有使用这个机制
         """"""
         # Start email engine when sending first email.
         if not self.active:
