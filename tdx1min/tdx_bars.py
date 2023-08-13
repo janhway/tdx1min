@@ -6,42 +6,13 @@ import time
 from typing import List, Tuple
 
 from pytdx.hq import TdxHq_API
+from tdx1min.api_pool import ApiPool
 from tdx1min.db_ticks import BarMin, crt_barmin
 
-from tdx1min.tdx_cfg import TDX_HQ_HOST, BAR_PERIOD
-from tdx1min.tdx_stg import read_cfg, cal_pre_tmap, day_bar_slots, need_query, write_stg_price, cal_open_close_new
+from tdx1min.tdx_cfg import BAR_PERIOD
+from tdx1min.tdx_stg import read_cfg, cal_pre_tmap, day_bar_slots, write_stg_price, cal_open_close_new
 from tdx1min.trade_calendar import cur_date, now_is_tradedate
 from tdx1min.vnlog import logi, loge, logw
-
-
-class ApiPool(object):
-
-    def __init__(self, max_num):
-        tmp_hosts = [TDX_HQ_HOST[k] for k in TDX_HQ_HOST]
-        self.num = max_num if len(tmp_hosts) > max_num else len(tmp_hosts)
-        self.hosts = [(h['IPAddress'], h['Port']) for h in tmp_hosts[0:self.num]]
-        self.active = False
-        self.api_pool: List[TdxHq_API] = []
-
-    def __getitem__(self, item):
-        return self.api_pool[item]
-
-    def start(self):
-        if self.active:
-            return
-        self.active = True
-        self.api_pool = []
-        for ip, port in self.hosts:
-            api = TdxHq_API(auto_retry=True)
-            api.connect(ip=ip, port=int(port), time_out=60)
-            self.api_pool.append(api)
-
-    def stop(self):
-        if not self.active:
-            return
-        for api in self.api_pool:
-            api.close()
-        self.active = False
 
 
 def tdx_slot_equal(tdx_slot_std, tdx_slot_option):
@@ -93,7 +64,7 @@ def query_bar_min_worker(mc_list: List[Tuple[int, str]],
             logi("non-exact query. return data={}".format(data))
 
         for market, code in mc_list[i:end]:
-            if code not in data:
+            if not data or code not in data:
                 non_exist.append((market, code))
                 loge("code {} has no bar info.".format(code))
                 continue
@@ -131,36 +102,42 @@ def query_bar_min_worker(mc_list: List[Tuple[int, str]],
 def query_bar_min(market_code_list: List[Tuple[int, str]],
                   api_pool: ApiPool, exact: bool = True) -> Tuple[dict, List, List]:
     start = time.time()
-
     min_step = 150
 
-    step = math.ceil(len(market_code_list) / api_pool.num)
-    max_workers = api_pool.num
+    pl: List[TdxHq_API] = api_pool.alloc_api(5)
+    step = math.ceil(len(market_code_list) / len(pl))
+    max_workers = len(pl)
     if step < min_step:
         step = min_step
         max_workers = math.ceil(len(market_code_list) / step)
     logi("worker num={} step={}".format(max_workers, step))
 
-    futures = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        for i in range(0, len(market_code_list), step):
-            idx = int(i / step)
-            end = i + step if i + step < len(market_code_list) else len(market_code_list)
-            future = executor.submit(query_bar_min_worker, market_code_list[i:end], api_pool[idx], exact)
-            futures.append(future)
-
     mp = {}
     lost = []
     non_exist = []
-    for future in concurrent.futures.as_completed(futures):
-        err = future.exception()
-        if not err:
-            tmp_mp, tmp_lost, tmp_non_exist = future.result()
-            mp.update(tmp_mp)
-            lost.extend(tmp_lost)
-            non_exist.extend(tmp_non_exist)
-        else:
-            loge("error={}".format(err))
+    try:
+        futures = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            for i in range(0, len(market_code_list), step):
+                idx = int(i / step)
+                end = i + step if i + step < len(market_code_list) else len(market_code_list)
+                future = executor.submit(query_bar_min_worker, market_code_list[i:end], pl[idx], exact)
+                futures.append(future)
+
+        for future in concurrent.futures.as_completed(futures):
+            err = future.exception()
+            if not err:
+                tmp_mp, tmp_lost, tmp_non_exist = future.result()
+                mp.update(tmp_mp)
+                lost.extend(tmp_lost)
+                non_exist.extend(tmp_non_exist)
+            else:
+                loge("error={}".format(err))
+    except Exception as e:
+        loge("exception {}".format(e))
+    finally:
+        api_pool.release_api()
+
     spent = round(time.time() - start, 2)
     logi("code num={} spent {} seconds. lost={} non_exist={}".format(len(market_code_list), spent, lost, non_exist))
 
@@ -224,7 +201,7 @@ def tdx_bars(api_pool: ApiPool, stgtrd_cfg_path=None, output_path=None):
             if tt.hour == 15 and tt.minute == 0:
                 tt += datetime.timedelta(minutes=1)  # 1455~1500 这根K线晚一分钟再查询
             elif tt.hour == 15 and tt.minute == BAR_PERIOD + 1:
-                tt -= datetime.timedelta(minutes=1) # 1500~1505 恢复之前的晚1分钟 这根K线其实不存在，查询会返回1455~1500的K线
+                tt -= datetime.timedelta(minutes=1)  # 1500~1505 恢复之前的晚1分钟 这根K线其实不存在，查询会返回1455~1500的K线
             logi("next query time={}".format(tt))
             que.append(tt)
 

@@ -9,7 +9,7 @@ import pathlib
 
 from tdx1min.collect import CollectEngine
 from tdx1min.db_ticks import Bar1Min
-from tdx1min.tdx_bars import ApiPool
+from tdx1min.api_pool import ApiPool
 from tdx1min.tdx_stg import read_cfg, BarMinData
 from tdx1min.vnlog import logi
 from pytdx.reader import TdxDailyBarReader, TdxFileNotFoundException
