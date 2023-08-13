@@ -161,10 +161,10 @@ def need_query():
 
 
 def day_bar_slots():
-    fstart = datetime.time(9, 25, 0)
+    fstart = datetime.time(9, 30, 0)
     fend = datetime.time(11, 30, 0)
     sstart = datetime.time(13, 0, 0)
-    send = datetime.time(15, 5, 0)
+    send = datetime.time(15, 0, 0)
 
     ret = []
     start = datetime.datetime(year=1900, month=1, day=1,

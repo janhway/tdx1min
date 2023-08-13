@@ -206,8 +206,6 @@ def tdx_bars(api_pool: ApiPool, stgtrd_cfg_path=None, output_path=None):
     logi("timer que {}".format(que))
     today_date = cur_date()
 
-    mp0925 = None
-    mp1455 = None
     while check_run_period():
         now = datetime.datetime.now()
         exp = []
@@ -219,11 +217,18 @@ def tdx_bars(api_pool: ApiPool, stgtrd_cfg_path=None, output_path=None):
             time.sleep(0.1)
             continue
 
+        # 增加下一个定时器
         for tt in exp:
             que.remove(tt)
-            que.append(tt + datetime.timedelta(minutes=BAR_PERIOD))
+            tt += datetime.timedelta(minutes=BAR_PERIOD)
+            if tt.hour == 15 and tt.minute == 0:
+                tt += datetime.timedelta(minutes=1)  # 1455~1500 这根K线晚一分钟再查询
+            elif tt.hour == 15 and tt.minute == BAR_PERIOD + 1:
+                tt -= datetime.timedelta(minutes=1) # 1500~1505 恢复之前的晚1分钟 这根K线其实不存在，查询会返回1455~1500的K线
+            logi("next query time={}".format(tt))
+            que.append(tt)
 
-        if not need_query():
+        if not now_is_tradedate():
             continue
 
         last_slot = get_our_last_slot()
@@ -237,32 +242,6 @@ def tdx_bars(api_pool: ApiPool, stgtrd_cfg_path=None, output_path=None):
             tmp_mp, tmp_lost, non_exist = query_bar_min(lost, api_pool, exact=False)
             assert len(lost) == len(tmp_mp.keys())
             mp.update(tmp_mp)
-
-        if last_slot == '0925':
-            mp0925 = mp
-            continue
-
-        if last_slot == '1455':
-            mp1455 = mp
-            continue
-
-        # 第一个应该是9.25-9.35 标记为0930
-        if last_slot == '0930' and mp0925 is not None:
-            logi("merge slot 0925 and 0930")
-            for mp_code in mp:
-                if mp_code in mp0925:
-                    # 暂时注释掉合并功能 因为 9点之前查询的都会返回 0930-0935 这条K线  不太合理
-                    # mp[mp_code]['open'] = mp0925[mp_code]['open']
-                    pass
-            mp0925 = None
-
-        if last_slot == '1500' and mp1455 is not None:
-            logi("merge slot 1455 and 1500")
-            for mp_code in mp:
-                if mp_code in mp1455:
-                    mp[mp_code]['open'] = mp1455[mp_code]['open']
-            mp1455 = None
-            last_slot = '1455'
 
         # 计算和保存stg指数信息
         # start = time.time()
