@@ -6,14 +6,11 @@ from logging import Logger
 
 from datetime import datetime
 from pathlib import Path
-from queue import Empty, Queue
-from threading import Thread
 from typing import Any, Dict
 
 from tdx1min.tdx_cfg import WORK_DIR
 
 SETTINGS: Dict[str, Any] = {
-    "log.active": True,
     "log.level": logging.DEBUG,
     "log.console": True,
     "log.file": True,
@@ -34,18 +31,13 @@ class LogEngine(object):
     Processes log event and output with logging module.
     """
 
-    def __init__(self, file_name=None):
+    def __init__(self, name="Trader", file_prefix='vt', file_name=None):
         """"""
-        if not SETTINGS["log.active"]:
-            return
-        self.thread: Thread = Thread(target=self.run)
-        self.queue: Queue = Queue()
-        self.active: bool = False
         self.console_handler = None
 
         self.level: int = SETTINGS["log.level"]
 
-        self.logger: Logger = logging.getLogger("tdxmin")
+        self.logger: Logger = logging.getLogger(name)
         self.logger.setLevel(self.level)
 
         self.formatter = logging.Formatter(
@@ -54,9 +46,9 @@ class LogEngine(object):
 
         self.add_null_handler()
 
-        today_date = datetime.now().strftime("%Y%m%d_%H%M%S")
+        today_date = datetime.now().strftime("%Y-%m-%d")
         if not file_name:
-            filename = f"vt_{today_date}.log"
+            filename = f"{file_prefix}_{today_date}.log"
         else:
             filename = file_name
         log_path = get_logs_path()
@@ -92,13 +84,7 @@ class LogEngine(object):
 
     def add_file_handler(self) -> None:
         """
-        Add file output of log.
         """
-        # today_date = datetime.now().strftime("%Y%m%d")
-        # filename = f"vt_{today_date}.log"
-        # log_path = get_logs_path()
-        # file_path = os.path.join(log_path, filename)
-
         # file_handler = logging.FileHandler(
         #     self.file_path, mode="a", encoding="utf8"
         # )
@@ -114,39 +100,8 @@ class LogEngine(object):
         file_handler.setFormatter(self.formatter)
         self.logger.addHandler(file_handler)
 
-    def log(self, level: int, msg: str) -> None:  # 没有使用这个机制
-        """"""
-        # Start email engine when sending first email.
-        if not self.active:
-            self.start()
 
-        self.queue.put((level, msg))
-
-    def run(self) -> None:
-        """"""
-        while self.active:
-            try:
-                log = self.queue.get(block=True, timeout=1)
-                # print(log)
-                self.logger.log(log[0], log[1])
-            except Empty:
-                pass
-
-    def start(self) -> None:
-        """"""
-        self.active = True
-        self.thread.start()
-
-    def close(self) -> None:
-        """"""
-        if not self.active:
-            return
-
-        self.active = False
-        self.thread.join()
-
-
-gLog = LogEngine()
+gLog = LogEngine(name="TdxMin", file_prefix='tdx_min')
 logd = partial(gLog.logger.log, logging.DEBUG)
 logi = partial(gLog.logger.log, logging.INFO)
 logw = partial(gLog.logger.log, logging.WARN)

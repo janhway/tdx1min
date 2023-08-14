@@ -62,7 +62,7 @@ def cal_pre_tmap(cfg: Dict[str, CfgItData]):
 
 
 def cal_open_close_new(slot: str, pre_tmap: float,
-                   cfg: Dict[str, CfgItData], mp: Dict[str, Dict[str, Any]]):
+                       cfg: Dict[str, CfgItData], mp: Dict[str, Dict[str, Any]]):
     # 对stg_cfg列表中每个品种下一个交易日实盘的open_price,close_price,以及Ltg，分别求乘数Open_price*Ltg,close_price*Ltg,
     # 然后统计所有品种各乘数的累计值（汇总求和），由此计算出Stg指数的点位的open，close价格
     # Open = sum(open_price*Ltg)/Pretmap*net0
@@ -89,10 +89,11 @@ def cal_open_close_new(slot: str, pre_tmap: float,
 
 
 def get_stg_path():
-    folder_path = Path(WORK_DIR)
-    folder_path = folder_path.joinpath("stg")
+    folder_path = Path(r"c:\ftp\stg")
+    # folder_path = Path(WORK_DIR)
+    # folder_path = folder_path.joinpath("stg")
     if not folder_path.exists():
-        folder_path.mkdir()
+        folder_path.mkdir(parents=True)
     print("get_stg_path, current path={} log_path={}".format(Path.cwd(), folder_path))
     return folder_path
 
@@ -180,4 +181,5 @@ def day_bar_slots():
 
 if __name__ == '__main__':
     # print(day_bar_slots())
+    get_stg_path()
     pass
