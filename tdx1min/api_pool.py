@@ -85,7 +85,7 @@ class ApiPool(object):
 
     def __init__(self, max_num):
         self.period = 5
-        self.heartbeat_interval = 10
+        self.heartbeat_interval = 30
 
         self.worker_thread = None
         self.lock = threading.Lock()
