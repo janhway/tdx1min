@@ -1,4 +1,5 @@
 import logging
+import logging.handlers
 import os
 from functools import partial
 from logging import Logger
@@ -44,7 +45,7 @@ class LogEngine(object):
 
         self.level: int = SETTINGS["log.level"]
 
-        self.logger: Logger = logging.getLogger("Trader")
+        self.logger: Logger = logging.getLogger("tdxmin")
         self.logger.setLevel(self.level)
 
         self.formatter = logging.Formatter(
@@ -98,8 +99,16 @@ class LogEngine(object):
         # log_path = get_logs_path()
         # file_path = os.path.join(log_path, filename)
 
-        file_handler = logging.FileHandler(
-            self.file_path, mode="a", encoding="utf8"
+        # file_handler = logging.FileHandler(
+        #     self.file_path, mode="a", encoding="utf8"
+        # )
+
+        # TimedRotatingFileHandler，并设置
+        # when="midnight"，表示每天凌晨切换到新的日志文件。
+        # interval=1 表示每天更换一次，
+        # backupCount=7 表示保留最近的 7 个日志文件，以确保不会占用过多的磁盘空间。
+        file_handler = logging.handlers.TimedRotatingFileHandler(
+            self.file_path, when="midnight", interval=1, backupCount=7, encoding='utf-8'
         )
         file_handler.setLevel(self.level)
         file_handler.setFormatter(self.formatter)
