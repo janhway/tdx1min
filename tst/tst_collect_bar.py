@@ -9,7 +9,7 @@ from typing import List
 from pytdx.hq import TdxHq_API
 from tdx1min.api_pool import ApiPool
 from tdx1min.collect import CollectEngine
-from tdx1min.vnlog import LogEngine, loge
+from tdx1min.vnlog import loge
 
 HOST = "110.41.147.114"
 
@@ -28,7 +28,7 @@ HOST = "110.41.147.114"
 
 def tst_collect_bars():
     api = TdxHq_API(auto_retry=True)
-    mcodes = [(0, "000004"), (0, '300904'), (1, '600903')]
+    mcodes = [(0, "000004"), (0, '300904'), (1, '600903'), (0, '300757')]
     dt = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
     coll: CollectEngine = CollectEngine(f"barsx_{dt}.txt")
 
@@ -70,4 +70,4 @@ def tst_collect_bars2():
 
 
 if __name__ == '__main__':
-    tst_collect_bars2()
+    tst_collect_bars()

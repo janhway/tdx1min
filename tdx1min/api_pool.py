@@ -8,7 +8,7 @@ from typing import List, Tuple, Dict, Optional
 
 from pytdx.hq import TdxHq_API
 from tdx1min.trade_calendar import IS_TEST_RUN
-from tdx1min.vnlog import loge, logd, logi
+from tdx1min.vnlog import loge, logd, logi, logw
 
 
 def _tdx_hq_host(position: str = None) -> dict:
@@ -180,8 +180,8 @@ class ApiPool(object):
                 except Exception as e:
                     loge("".format(e))
 
-            logd("pool idle_num={} inuse_num={} fail_num={}, ip dont_use_num={}"
-                 .format(len(self.idle_pool), len(self.inuse_pool), len(self.fail_pool), len(self.dont_use_ips)))
+            # logd("pool idle_num={} inuse_num={} fail_num={}, ip dont_use_num={}"
+            #      .format(len(self.idle_pool), len(self.inuse_pool), len(self.fail_pool), len(self.dont_use_ips)))
 
             if self.inuse_pool or (self.dont_work_time() and len(self.idle_pool) >= math.ceil(self.max_num / 2)):
                 self.stop_event.wait(5)
@@ -236,7 +236,9 @@ class ApiPool(object):
             else:
                 with self.lock:
                     self.idle_pool.append(hb_api)
-            logd("host {} heatbeat spent={}".format(hb_api.ip, round(time.time() - start, 3)))
+            spent = round(time.time() - start, 3)
+            if spent >= 1.0:
+                logw("host {} heatbeat spent={}".format(hb_api.ip, spent))
             return True
         else:
             return False
