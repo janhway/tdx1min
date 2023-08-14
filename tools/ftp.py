@@ -1,5 +1,6 @@
 # coding=utf8
 # FTP操作
+import datetime
 import ftplib
 import os
 import threading
@@ -320,21 +321,24 @@ class ftphelper:
 
         print(self.ftp.welcome)
 
-    def DownLoadFile(self, LocalFile, RemoteFile):  # 下载当个文件
-        file_handler = open(LocalFile, 'wb')
+    def modify_time(self, remote_file):
+        mtime = self.ftp.sendcmd('MDTM ' + remote_file)
+        mtime_datetime = datetime.datetime.strptime(mtime[4:], "%Y%m%d%H%M%S")
+        print("{} modification time={} datetime={}".format(remote_file, mtime, mtime_datetime))
+        return mtime_datetime
+
+    def download_file(self, local_file, remote_file):  # 下载当个文件
+        file_handler = open(local_file, 'wb')
+        is_ok = True
         try:
-
-            # print(file_handler)
-            # self.ftp.retrbinary("RETR %s" % (RemoteFile), file_handler.write)#接收服务器上文件并写入本地文件
-            bufsize = 10240  # 设置缓冲块大小
-
-            self.ftp.retrbinary('RETR ' + RemoteFile, file_handler.write)
-            # self.ftp.retrlines('RETR ' + RemoteFile,file_handler.write)
+            self.ftp.retrbinary('RETR ' + remote_file, file_handler.write)
         except Exception as e:
-            print('download %s error:' % RemoteFile, e)
-            self.DownLoadFile(LocalFile, RemoteFile)
+            print('download %s error:' % remote_file, e)
+            # self.download_file(local_file, remote_file)
+            is_ok = False
         finally:
             file_handler.close()
+        return is_ok
 
     def DownLoadFileTree(self, LocalDir, RemoteDir):  # 下载整个目录下的文件
         # print("remoteDir:", RemoteDir)
@@ -356,7 +360,7 @@ class ftphelper:
                     os.makedirs(Local)
                 self.DownLoadFileTree(Local, file)
             else:
-                self.DownLoadFile(Local, file)
+                self.download_file(Local, file)
                 # self.ftp.sendcmd('PWD')
                 # self.ftp.voidcmd('NOOP')
                 # self.ftp.voidresp()
