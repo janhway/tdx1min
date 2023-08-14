@@ -3,7 +3,7 @@ import os
 import socket
 from pathlib import Path
 
-from tst.ftp import ftphelper
+from tools.ftp import ftphelper
 
 
 def get_local_machine_info():
@@ -78,7 +78,7 @@ def dl_stg_cfg():
     print("=== before download")
     get_file_times(r"c:\ftp\params\Stgtrd_cfg.csv")
     print("=== downloading")
-    download_file("Stgtrd_cfg.csv")
+    download_file("../tst/Stgtrd_cfg.csv")
     print("=== after download")
     get_file_times(r"c:\ftp\params\Stgtrd_cfg.csv")
 

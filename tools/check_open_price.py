@@ -9,7 +9,7 @@ from typing import List
 # [0925-0930)和[0930-0935) 的开盘价相等
 # 0925之前查询时返回的开盘价等于昨天的收盘价格
 def check_open_price():
-    with open(r'E:\chenzhenwei\PycharmProjects\quant\tdx1min\.workdir\logs\barsx_20230811_085104.txt', 'r') as fp:
+    with open(r'/.workdir/logs/barsx_20230811_085104.txt', 'r') as fp:
         lines = fp.readlines()
     dataslt0925 = {}
     datas0925 = {}
