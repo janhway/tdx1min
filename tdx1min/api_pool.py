@@ -236,7 +236,7 @@ class ApiPool(object):
             else:
                 with self.lock:
                     self.idle_pool.append(hb_api)
-            logd("host {} heatbeat spent={}".format(hb_api.ip, time.time() - start))
+            logd("host {} heatbeat spent={}".format(hb_api.ip, round(time.time() - start, 3)))
             return True
         else:
             return False
