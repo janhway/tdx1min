@@ -12,7 +12,7 @@ from tdx1min.db_ticks import BarMin
 from tdx1min.api_pool import ApiPool
 from tdx1min.tdx_stg import read_cfg
 from tdx1min.vnlog import logi
-from pytdx.reader import TdxDailyBarReader, TdxFileNotFoundException
+from pytdx.reader import TdxDailyBarReader, TdxFileNotFoundException, TdxExHqDailyBarReader
 
 HOST = "110.41.147.114"
 
@@ -252,10 +252,11 @@ def tst_tdx05():
 
 
 def tst_tdx_reader():
-    reader = TdxDailyBarReader(r"D:\new_tdx\vipdoc")  # r"C:\zd_zsone\vipdoc")
+    reader = TdxExHqDailyBarReader()  # r"C:\zd_zsone\vipdoc")
 
-    df = reader.get_df("600036", "sh")
-    # df = reader.get_df(r"D:\new_tdx\vipdoc\sh\minline\sh600000.lc1")
+    # df = reader.get_df("600036", "sh")
+    fn = r'D:\new_tdx\vipdoc\sh\fzline\sh600036.lc5'
+    df = reader.get_df(fn)
     print(df)
 
 
@@ -268,8 +269,8 @@ if __name__ == '__main__':
     # tst_tdx02()
     # tst_tdx03()
     # tst_tdx04()
-    tst_tdx05()
-    # tst_tdx_reader()
+    # tst_tdx05()
+    tst_tdx_reader()
     # print(day_1min_slots())
     # print(slot_from_servertime('10:18:30.486'))
     # print(slot_from_servertime('9:18:30.486'))

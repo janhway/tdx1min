@@ -21,7 +21,7 @@ def read_o_stg(dt='20230811'):
 
         mp[tmp[1]] = {"op": tmp[2], "cp": tmp[5]}
 
-    print(mp)
+    print("read_o_stg", mp)
     return mp
 
 
@@ -44,32 +44,50 @@ def read_m_stg(dt='20230811'):
 
         mp[tmp[3]] = {"op": tmp[1], "cp": tmp[2]}
 
-    print(mp)
+    print("read_m_stg", mp)
     return mp
 
 
+def cdiff(f1, f2):
+    diff = abs(f1 - f2) / f1
+    # diff = round(diff, 6)
+    # print(diff)
+    return diff
+
+
 def compare_stg():
-    dt = '20230814'
+    dt = '20230811'
     m = read_m_stg(dt)
     o = read_o_stg(dt)
     assert len(m.keys()) == len(o.keys())
     total_count = 2 * len(m.keys())
     count = 0
     least_diff = 0.0001
+
+    max_diff = 0
+    o_price = 0
+    m_price = 0
     for k in m:
-        diff = float(m[k]['op']) - float(o[k]['op'])
-        diff = round(abs(diff), 6)
+        diff = cdiff(float(m[k]['op']), float(o[k]['op']))
         if diff > least_diff:
             print("open price unequal slot={} my_op={} th_op={} diff={}".format(k, m[k]['op'], o[k]['op'], diff))
             count += 1
+        if diff > max_diff:
+            max_diff = diff
+            o_price = float(o[k]['op'])
+            m_price = float(m[k]['op'])
 
-        diff = float(m[k]['cp']) - float(o[k]['cp'])
-        diff = round(abs(diff), 6)
+        diff = cdiff(float(m[k]['cp']), float(o[k]['cp']))
         if diff > least_diff:
             print("clos price unequal slot={} my_op={} th_op={} diff={}".format(k, m[k]['op'], o[k]['op'], diff))
             count += 1
+        if diff > max_diff:
+            max_diff = diff
+            o_price = float(o[k]['cp'])
+            m_price = float(m[k]['cp'])
 
-    print("total_count={} count={}".format(total_count, count))
+    print("total_count={} mis_count={} max_diff={} o_price={} m_price={}"
+          .format(total_count, count, max_diff, o_price, m_price))
 
 
 if __name__ == "__main__":

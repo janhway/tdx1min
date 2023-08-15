@@ -121,14 +121,14 @@ def cal_his_stg_bar():
     mcodes, cfg = read_cfg_file(cfg_file)
 
     output_path = WORK_DIR
-    mp_filename = os.path.join(output_path, f"dl_bar_{today}.txt")
+    mp_filename = os.path.join(output_path, f"file_bar_{today}.txt")
     with open(mp_filename, 'r') as fp:
         mp_all = json.load(fp)
     # print(mp_all)
 
     pre_tmap = cal_pre_tmap(cfg)
     stg_output_path = os.path.join(output_path, "stg_his")
-    stg_output_file = os.path.join(stg_output_path, f"his_stg_{today}.csv")
+    stg_output_file = os.path.join(stg_output_path, f"his_stg_{today}_file.csv")
 
     slots = day_bar_slots()
     with open(stg_output_file, "w") as fp:
