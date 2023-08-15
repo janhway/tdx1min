@@ -31,6 +31,11 @@ def read_cfg(path=None) -> Tuple[List[Tuple[int, str]], Dict[str, CfgItData]]:
             path = os.path.join(os.path.dirname(__file__), fn)
     else:
         path = os.path.join(path, fn)
+    return read_cfg_file(path)
+
+
+def read_cfg_file(full_file_path: str) -> Tuple[List[Tuple[int, str]], Dict[str, CfgItData]]:
+    path = full_file_path
     logi("path={}".format(path))
     codes = []
     cfg: Dict[str, CfgItData] = {}
@@ -47,8 +52,8 @@ def read_cfg(path=None) -> Tuple[List[Tuple[int, str]], Dict[str, CfgItData]]:
             codes.append((market, tmp[0].strip()[2:]))
             cfg[code] = it
     logi("read_cfg code_num={}".format(len(codes)))
-    # logi("read_cfg codes={}".format(codes))
-    # logi("read_cfg cfg={}".format(cfg))
+    logi("read_cfg codes={}".format(codes))
+    logi("read_cfg cfg={}".format(cfg))
     return codes, cfg
 
 
@@ -104,7 +109,11 @@ def write_stg_price(slot_time: str, open_price: float, close_price: float, outpu
     else:
         file = Path(output_path)
     file = file.joinpath("stg_" + datetime.datetime.now().strftime("%Y%m%d") + ".csv")
+    write_stg_price_file(slot_time, open_price, close_price, file)
 
+
+def write_stg_price_file(slot_time: str, open_price: float, close_price: float, output_file):
+    file = Path(output_file)
     title = 'Code,open,close,dt,CreateTime\n'
 
     if not file.exists():

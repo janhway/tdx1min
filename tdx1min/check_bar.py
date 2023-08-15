@@ -26,7 +26,7 @@ HOST = "110.41.147.114"
 def check_barmin_from_db():
     ret: Tuple[List[str], Dict[str, CfgItData]] = read_cfg()
     codes: List[str] = ret[0]
-    today = cur_date()
+    today = "20230814"
 
     valid_slots = day_bar_slots()
     sel_slot = [f"{slot:04d}" for slot in range(930, 1500, 5) if f"{slot:04d}" in valid_slots]
@@ -80,7 +80,7 @@ def check_barmin_from_db():
                         found = d
                         break
                 if not found:
-                    loge("db_bars slot {} not found in data".format(b.time))
+                    loge("code {} db_bars slot {} not found in data".format(code, b.time))
                     continue
 
                 if float(b.open) != d['open'] and float(b.close) == d['close']:

@@ -8,9 +8,9 @@ from pytdx.hq import TdxHq_API
 import pathlib
 
 from tdx1min.collect import CollectEngine
-from tdx1min.db_ticks import Bar1Min
+from tdx1min.db_ticks import BarMin
 from tdx1min.api_pool import ApiPool
-from tdx1min.tdx_stg import read_cfg, BarMinData
+from tdx1min.tdx_stg import read_cfg
 from tdx1min.vnlog import logi
 from pytdx.reader import TdxDailyBarReader, TdxFileNotFoundException
 
@@ -205,37 +205,50 @@ def tst_tdx04():
         print(data)
 
 
-def ttt():
-    # HOST = "110.41.147.114"
+# def ttt():
+#     # HOST = "110.41.147.114"
+#     api = TdxHq_API()
+#     mcodes, _ = read_cfg()
+#     idx = 0
+#     with api.connect(ip=HOST, port=7709, time_out=60):
+#         while 1:
+#             # data = api.get_security_bars(8, 1, '688567', 0, 3)
+#             # data = api.get_security_bars(8, 0, '003043', 0, 2)
+#             data = api.get_security_bars(8, mcodes[idx][0], mcodes[idx][1], 0, 2)
+#             # print(type(data))
+#             # data.reverse()
+#             idx += 1
+#             if idx >= len(mcodes):
+#                 idx = 0
+#             # d['datetime'], d['open'], d['close']
+#             # datetime=2023-07-31 15:00 open=53.58 close=53.58
+#             d = data[0]
+#             tmp_datetime = d['datetime'].replace("-", "").replace(" ", "")  # ==2023073115:00
+#             st = tmp_datetime[8:] + ":00.000"  # == 15:00:00.000
+#             filled_date = tmp_datetime.replace(":", "")  # ==202307311500
+#             b: BarMinData = BarMinData(date="11111", time="slot", code="code",
+#                                        open_st=st, open=d['close'],  # open和close使用一样的值填充
+#                                        close_st=st, close=d['close'],
+#                                        fill_date=filled_date)
+#             db_bar: Bar1Min = Bar1Min(date=b.date, time=b.time, code=b.code,
+#                                       open_st=b.open_st, open=b.open,
+#                                       close_st=b.close_st, close=b.close, fill_date=b.fill_date)
+#             print(b)
+#             print(db_bar)
+#             time.sleep(3)
+
+
+def tst_tdx05():
     api = TdxHq_API()
-    mcodes, _ = read_cfg()
+
     idx = 0
+
+    # mcodes, _ = read_cfg()
+    mcodes = [(1, '600216'), (0, '300757')]
     with api.connect(ip=HOST, port=7709, time_out=60):
-        while 1:
-            # data = api.get_security_bars(8, 1, '688567', 0, 3)
-            # data = api.get_security_bars(8, 0, '003043', 0, 2)
-            data = api.get_security_bars(8, mcodes[idx][0], mcodes[idx][1], 0, 2)
-            # print(type(data))
-            # data.reverse()
-            idx += 1
-            if idx >= len(mcodes):
-                idx = 0
-            # d['datetime'], d['open'], d['close']
-            # datetime=2023-07-31 15:00 open=53.58 close=53.58
-            d = data[0]
-            tmp_datetime = d['datetime'].replace("-", "").replace(" ", "")  # ==2023073115:00
-            st = tmp_datetime[8:] + ":00.000"  # == 15:00:00.000
-            filled_date = tmp_datetime.replace(":", "")  # ==202307311500
-            b: BarMinData = BarMinData(date="11111", time="slot", code="code",
-                                       open_st=st, open=d['close'],  # open和close使用一样的值填充
-                                       close_st=st, close=d['close'],
-                                       fill_date=filled_date)
-            db_bar: Bar1Min = Bar1Min(date=b.date, time=b.time, code=b.code,
-                                      open_st=b.open_st, open=b.open,
-                                      close_st=b.close_st, close=b.close, fill_date=b.fill_date)
-            print(b)
-            print(db_bar)
-            time.sleep(3)
+        if 1:
+            bars = api.get_security_bars_x(0, mcodes, 0, 50)
+            print(bars)
 
 
 def tst_tdx_reader():
@@ -252,9 +265,10 @@ if __name__ == '__main__':
     # read_cfg()
     # tst_tdx()
     # tst_tdx01()
-    tst_tdx02()
+    # tst_tdx02()
     # tst_tdx03()
     # tst_tdx04()
+    tst_tdx05()
     # tst_tdx_reader()
     # print(day_1min_slots())
     # print(slot_from_servertime('10:18:30.486'))

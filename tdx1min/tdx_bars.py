@@ -93,11 +93,12 @@ def query_bar_min_worker(mc_list: List[Tuple[int, str]],
                 if it_tdx_date == today and tdx_slot_equal(tdx_slot_std, it_tdx_slot):
                     mp[code] = it
                     found = True
+                    break
 
             if (not found) and (not exact):
                 j = len(d) - 1
                 mp[code] = d[j]  # 取最后一个最新的
-                mp[code]['open'] = d[j]['close']  # open设置成跟close一样
+                mp[code]['open'] = mp[code]['close']  # open设置成跟close一样
                 found = True
 
             if not found:

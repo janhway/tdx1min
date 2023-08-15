@@ -24,6 +24,7 @@ def get_db_tick_path():
         folder_path.mkdir()
 
     folder_path = folder_path.joinpath("ticks_{}.sqlite3".format(datetime.datetime.now().strftime("%Y%m%d")))
+    # folder_path = folder_path.joinpath("ticks_20230814.sqlite3")
     logi("get_db_tick_path, current path={} db_path={}".format(Path.cwd(), folder_path))
     return folder_path.__str__()
 
