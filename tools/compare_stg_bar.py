@@ -1,5 +1,9 @@
-def read_o_stg(dt='20230811'):
-    fn = r"c:\ftp\stg\Stgtrd_M5.csv"
+import datetime
+import sys
+
+
+def read_o_stg(dt):
+    fn = r"c:\ftp\params\Stgtrd_M5.csv"
 
     mp = {}
     with open(fn, "r") as fp:
@@ -25,7 +29,7 @@ def read_o_stg(dt='20230811'):
     return mp
 
 
-def read_m_stg(dt='20230811'):
+def read_m_stg(dt):
     fn = r"c:\ftp\stg\stg_" + dt + ".csv"
 
     mp = {}
@@ -55,8 +59,8 @@ def cdiff(f1, f2):
     return diff
 
 
-def compare_stg():
-    dt = '20230811'
+def compare_stg(dt):
+    # dt = '20230815'
     m = read_m_stg(dt)
     o = read_o_stg(dt)
     assert len(m.keys()) == len(o.keys())
@@ -91,4 +95,11 @@ def compare_stg():
 
 
 if __name__ == "__main__":
-    compare_stg()
+    if len(sys.argv) >= 2:
+        dt_str = sys.argv[1]
+    else:
+        dt = datetime.datetime.now()
+        dt = dt - datetime.timedelta(days=1)
+        dt_str = dt.strftime("%Y%m%d")
+    print("compare datetime={}".format(dt_str))
+    compare_stg(dt_str)

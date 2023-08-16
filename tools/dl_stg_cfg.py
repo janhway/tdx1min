@@ -173,8 +173,30 @@ def dl_stg_cfg():
     get_file_times(local_file_back_str)
 
 
+def dl_stg_result():
+    local_path_str = r"c:\ftp\params"
+    filename = "Stgtrd_M5.csv"
+    # local_file_str = os.path.join(local_path_str, filename)
+
+    remote_path_str = "/params/"
+
+    local_file_str, mtime_datetime, has_dl = download_file(local_path_str, remote_path_str, filename)
+    print("local_file_str={}, mtime_datetime={}, has_dl={}".format(local_file_str, mtime_datetime, has_dl))
+
+    local_file_back_str = os.path.join(local_path_str, f"Stgtrd_M5_{datetime.datetime.now().strftime('%Y%m%d')}.csv")
+    if has_dl or not os.path.exists(local_file_back_str):
+        try:
+            shutil.copy2(local_file_str, local_file_back_str)
+            os.utime(local_file_back_str, (time.time(), mtime_datetime.timestamp()))
+        except Exception as e:
+            print("Exception {}".format(e))
+
+    get_file_times(local_file_back_str)
+
+
 if __name__ == "__main__":
     # get_local_machine_info()
     # get_file_times(r"c:\ftp\params\Stgtrd_cfg.csv")
     # get_file_times_x(r"c:\ftp\params\Stgtrd_cfg.csv")
-    dl_stg_cfg()
+    dl_stg_result()
+    # dl_stg_cfg()
