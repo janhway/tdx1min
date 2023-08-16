@@ -240,7 +240,7 @@ def tdx_bars(api_pool: ApiPool, stgtrd_cfg_path=None, output_path=None):
             continue
 
         mp, lost, non_exist = query_bar_min(mcodes, api_pool, exact=True)
-        if lost:
+        if lost or non_exist:
             lost.extend(non_exist)
             tmp_mp, tmp_lost, non_exist = query_bar_min(lost, api_pool, exact=False)
             assert len(lost) == len(tmp_mp.keys())
