@@ -1,9 +1,12 @@
 import datetime
 import os
+import shutil
 import socket
 import time
 from ftplib import FTP
 from pathlib import Path
+
+import pytz
 
 from tools.ftp import ftphelper
 
@@ -83,7 +86,25 @@ def get_remote_file_mtime(hostname, username, password, remote_path, filename):
         print("Error:", str(e))
 
 
+def convert_utc_to_local(utc_time_string, local_timezone):
+    # 解析 UTC 时间字符串为 datetime 对象
+    utc_time = datetime.datetime.strptime(utc_time_string, "%Y%m%d%H%M%S")
+
+    # 设置 UTC 时区
+    utc_timezone = pytz.timezone('UTC')
+    utc_time = utc_timezone.localize(utc_time)
+
+    # 转换为本地时区时间
+    local_timezone = pytz.timezone(local_timezone)
+    local_time = utc_time.astimezone(local_timezone)
+
+    return local_time
+
+
 # 检查修改时间，如果一致，则不下载，否则下载
+# local_path_str: 本地目录 c:/ftp/params
+# remote_path_str： 远程目录 比如 /params/
+# filename: 文件名
 def download_file(local_path_str, remote_path_str, filename):
     ftp = ftphelper('106.14.134.228', 21)
     ftp.login('ftpuser', 'FTP+python')
@@ -96,50 +117,60 @@ def download_file(local_path_str, remote_path_str, filename):
     local_path = Path(local_path_str)
     if not local_path.exists():
         local_path.mkdir(parents=True)
-    local_path = local_path.joinpath(filename)
-    if local_path.exists():
+    local_file = local_path.joinpath(filename)
+    local_file_str = local_file.__str__()
+    if local_file.exists():
         # 本地文件修改时间
-        current_mtime = local_path.stat().st_mtime
+        current_mtime = local_file.stat().st_mtime
         local_mtime_datetime = datetime.datetime.fromtimestamp(current_mtime)
-        local_size = local_path.stat().st_size
-        print("local file {} modify_time={} size={}".format(local_path.__str__(), local_mtime_datetime, local_size))
-        # 比较修改时间
-        if remote_mtime_datetime == local_mtime_datetime and remote_size == local_size:
+        local_size = local_file.stat().st_size
+        print("local file {} modify_time={} size={}".format(local_file_str, local_mtime_datetime, local_size))
+        # 比较修改时间  remote_mtime_datetime带时区信息 local_mtime_datetime不带时区信息  所以用时间戳比较
+        if remote_mtime_datetime.timestamp() == local_mtime_datetime.timestamp() and remote_size == local_size:
             print("modify time and size are the same, no need to download.")
-            return local_path.__str__(), remote_mtime_datetime
+            return local_file_str, remote_mtime_datetime, False
 
-        local_path.unlink()
+        local_file.unlink()
 
     try_times = 3
     is_ok = False
     while try_times > 0:
-        is_ok = ftp.download_file(local_path.__str__(), remote_file)
+        is_ok = ftp.download_file(local_file_str, remote_file)
         if is_ok:
             break
         try_times -= 1
         time.sleep(3)
 
     if not is_ok:
-        print("fail to download {}".format(local_path_str))
-        return "", None
+        print("fail to download {}".format(local_file_str))
+        return "", None, False
 
     # 设置新的修改时间
-    os.utime(local_path.__str__(), (time.time(), remote_mtime_datetime.timestamp()))
+    os.utime(local_file_str, (time.time(), remote_mtime_datetime.timestamp()))
 
-    return local_path.__str__(), remote_mtime_datetime
+    print("succeed to download {}".format(local_file_str))
+    return local_file_str, remote_mtime_datetime, True
 
 
 def dl_stg_cfg():
     local_path_str = r"c:\ftp\params"
     filename = "Stgtrd_cfg.csv"
-    local_file_str = os.path.join(local_path_str, filename)
+    # local_file_str = os.path.join(local_path_str, filename)
 
     remote_path_str = "/params/"
 
-    local_file_ret, mtime_datetime = download_file(local_path_str, remote_path_str, filename)
-    print(local_file_ret, mtime_datetime)
+    local_file_str, mtime_datetime, has_dl = download_file(local_path_str, remote_path_str, filename)
+    print("local_file_str={}, mtime_datetime={}, has_dl={}".format(local_file_str, mtime_datetime, has_dl))
 
-    get_file_times(local_file_str)
+    local_file_back_str = os.path.join(local_path_str, f"Stgtrd_cfg_{datetime.datetime.now().strftime('%Y%m%d')}.csv")
+    if has_dl or not os.path.exists(local_file_back_str):
+        try:
+            shutil.copy2(local_file_str, local_file_back_str)
+            os.utime(local_file_back_str, (time.time(), mtime_datetime.timestamp()))
+        except Exception as e:
+            print("Exception {}".format(e))
+
+    get_file_times(local_file_back_str)
 
 
 if __name__ == "__main__":

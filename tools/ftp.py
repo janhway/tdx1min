@@ -4,6 +4,8 @@ import datetime
 import ftplib
 import os
 import threading
+
+import pytz
 # !/usr/bin/python
 # -*- coding: UTF-8 -*-
 from tqdm import tqdm
@@ -321,9 +323,25 @@ class ftphelper:
 
         print(self.ftp.welcome)
 
+    def convert_utc_to_local(self, utc_time_string, local_timezone):
+        # 解析 UTC 时间字符串为 datetime 对象
+        utc_time = datetime.datetime.strptime(utc_time_string, "%Y%m%d%H%M%S")
+
+        # 设置 UTC 时区
+        utc_timezone = pytz.timezone('UTC')
+        utc_time = utc_timezone.localize(utc_time)
+
+        # 转换为本地时区时间
+        local_timezone = pytz.timezone(local_timezone)
+        local_time = utc_time.astimezone(local_timezone)
+
+        return local_time
+
+    # 返回的是北京时间
     def modify_time(self, remote_file):
         mtime = self.ftp.sendcmd('MDTM ' + remote_file)
-        mtime_datetime = datetime.datetime.strptime(mtime[4:], "%Y%m%d%H%M%S")
+        utc_mtime_str = mtime[4:]
+        mtime_datetime = self.convert_utc_to_local(utc_mtime_str, "Asia/Shanghai")
         print("{} modification time={} datetime={}".format(remote_file, mtime, mtime_datetime))
         return mtime_datetime
 
