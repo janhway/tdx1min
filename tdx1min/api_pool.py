@@ -11,7 +11,7 @@ from tdx1min.trade_calendar import IS_TEST_RUN
 from tdx1min.vnlog import loge, logd, logi, logw
 
 
-def _tdx_hq_host(position: str = None) -> dict:
+def _tdx_hq_host(positions: List[str] = None) -> dict:
     file = os.path.dirname(__file__)
     file = os.path.join(file, 'connect.cfg')
     tmp_path = Path(file)
@@ -52,11 +52,13 @@ def _tdx_hq_host(position: str = None) -> dict:
                 if field == 'Port' and hq_hosts[hid][field] != '7709':
                     del (hq_hosts[hid])
 
-    if position:
+    if positions:
         hq_hosts_spec = {}
         for k in hq_hosts:
-            if hq_hosts[k]["HostName"].find(position) != -1:
-                hq_hosts_spec[k] = hq_hosts[k]
+            for position in positions:
+                if hq_hosts[k]["HostName"].find(position) != -1:
+                    hq_hosts_spec[k] = hq_hosts[k]
+                    break
 
         return hq_hosts_spec
 
@@ -69,7 +71,7 @@ def get_hq_hosts() -> Tuple[List[str], Dict[str, Tuple[str, str, int]]]:
         from pytdx.config.hosts import hq_hosts
         hosts = hq_hosts
     else:
-        tmp_hosts = _tdx_hq_host(position='深圳')
+        tmp_hosts = _tdx_hq_host(positions=['深圳', '上海'])
         hosts = [(tmp_hosts[h]['HostName'], tmp_hosts[h]['IPAddress'], int(tmp_hosts[h]['Port'])) for h in tmp_hosts]
 
     ips = [h[1] for h in hosts]
@@ -167,7 +169,7 @@ class ApiPool(object):
         self.worker_thread = None
 
     def run(self):
-
+        tmp_count = 0
         while not self.stop_event.is_set():
             fails: List[TdxHq_API] = []
             with self.lock:
@@ -182,19 +184,28 @@ class ApiPool(object):
                 except Exception as e:
                     loge("".format(e))
 
-            # logd("pool idle_num={} inuse_num={} fail_num={}, ip dont_use_num={}"
-            #      .format(len(self.idle_pool), len(self.inuse_pool), len(self.fail_pool), len(self.dont_use_ips)))
+            tmp_count += 1
+            if tmp_count % 30 == 0:
+                logd("pool idle_num={} inuse_num={} fail_num={}, ip dont_use_num={}"
+                     .format(len(self.idle_pool), len(self.inuse_pool), len(self.fail_pool), len(self.dont_use_ips)))
 
             if self.inuse_pool or (self.dont_work_time() and len(self.idle_pool) >= self.min_num):
-                self.stop_event.wait(5)
+                self.stop_event.wait(2.)
                 continue
 
             #  补全连接数
-            if self.do_adding_api():
+            has_do, spent = self.do_adding_api()
+            if has_do:
+                if spent < 0.2:
+                    self.stop_event.wait(0.5)
                 continue
 
-            if not self.do_heartbeat():
-                self.stop_event.wait(5)
+            # 发送心跳
+            has_do, spent = self.do_heartbeat()
+            if not has_do:
+                self.stop_event.wait(2.)
+            elif spent < 0.5:
+                self.stop_event.wait(1)
 
         logi("release resource.")
         try:
@@ -208,10 +219,10 @@ class ApiPool(object):
             loge("exception {}".format(e))
         logi("thread quit.")
 
-    # 返回是否有干活
+    # has_do, spent 返回是否有干活和花费时间
     def do_heartbeat(self):
         if self.dont_work_time():
-            return False
+            return False, 0.0
 
         hb_api: Optional[TdxHq_API] = None
         last_ack_time = time.time()
@@ -242,20 +253,20 @@ class ApiPool(object):
             spent = round(time.time() - start, 3)
             if spent >= 1.0:
                 logw("host {} heatbeat spent={}".format(hb_api.ip, spent))
-            return True
+            return True, spent
         else:
-            return False
+            return False, 0.0
 
-    # 返回是否有干活
-    def do_adding_api(self):
+    # has_do, spent 返回是否有干活和花费时间
+    def do_adding_api(self) -> Tuple[bool, float]:
         if len(self.idle_pool) >= self.max_num:
-            return False
+            return False, 0.0
 
         # 确保不超过最大数目
         with self.lock:
             pool_len = len(self.inuse_pool) + len(self.idle_pool)
             if pool_len >= self.max_num:
-                return False
+                return False, 0.0
 
         # 到这里，我们确定需要增加api
         if self.idle_ips:
@@ -269,10 +280,10 @@ class ApiPool(object):
             if pool_len < self.min_num:
                 loge("no ip. pool idle_num={} inuse_num={} fail_num={}, ip dont_use_num={}"
                      .format(len(self.idle_pool), len(self.inuse_pool), len(self.fail_pool), len(self.dont_use_ips)))
-            return False
+            return False, 0.0
 
         port = self.host_mp[ip][2]
-
+        start = time.time()
         try:
             api = TdxHq_API(auto_retry=False, heartbeat=False)
             r = api.connect(ip=ip, port=int(port), time_out=5)
@@ -287,15 +298,17 @@ class ApiPool(object):
         except Exception as e:
             loge("exception {}".format(e))
 
-        logd("len(idle_ips)={} idle_ips={}".format(len(self.idle_ips), self.idle_ips))
+        spent = round(time.time() - start, 3)
+
+        logd("spent={} len(idle_ips)={} idle_ips={}".format(spent, len(self.idle_ips), self.idle_ips))
 
         logd("pool idle_num={} inuse_num={} fail_num={}, ip dont_use_num={}"
              .format(len(self.idle_pool), len(self.inuse_pool), len(self.fail_pool), len(self.dont_use_ips)))
-        return True
+        return True, spent
 
 
 if __name__ == '__main__':
-    api_pool: ApiPool = ApiPool(7)
+    api_pool: ApiPool = ApiPool(20)
     api_pool.start()
     while True:
         pool: List[TdxHq_API] = api_pool.alloc_api(3)
