@@ -100,7 +100,7 @@ class ApiPool(object):
         self.max_num = max_num
         if self.max_num > len(self.idle_ips):
             self.max_num = len(self.idle_ips)
-        self.min_num = math.ceil(self.max_num/2)
+        self.min_num = math.ceil(self.max_num / 2)
         logd("max_num={} min_num={} idle_ips_num={} idle_ips={}"
              .format(self.max_num, self.min_num, len(self.idle_ips), self.idle_ips))
 
@@ -189,14 +189,14 @@ class ApiPool(object):
                 logd("pool idle_num={} inuse_num={} fail_num={}, ip dont_use_num={}"
                      .format(len(self.idle_pool), len(self.inuse_pool), len(self.fail_pool), len(self.dont_use_ips)))
 
-            if self.inuse_pool or (self.dont_work_time() and len(self.idle_pool) >= self.min_num):
+            if self.dont_work_time() and len(self.idle_pool) + len(self.inuse_pool) >= self.min_num:
                 self.stop_event.wait(2.)
                 continue
 
             #  补全连接数
             has_do, spent = self.do_adding_api()
             if has_do:
-                if spent < 0.2:
+                if spent < 0.2:  # 防止建立连接快速失败时出现大量的打印
                     self.stop_event.wait(0.5)
                 continue
 
@@ -220,7 +220,7 @@ class ApiPool(object):
         logi("thread quit.")
 
     # has_do, spent 返回是否有干活和花费时间
-    def do_heartbeat(self):
+    def do_heartbeat(self) -> Tuple[bool, float]:
         if self.dont_work_time():
             return False, 0.0
 
@@ -308,7 +308,7 @@ class ApiPool(object):
 
 
 if __name__ == '__main__':
-    api_pool: ApiPool = ApiPool(20)
+    api_pool: ApiPool = ApiPool(10)
     api_pool.start()
     while True:
         pool: List[TdxHq_API] = api_pool.alloc_api(3)
