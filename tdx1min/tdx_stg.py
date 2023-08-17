@@ -6,7 +6,7 @@ from typing import List, Tuple, Dict, Any
 
 import dataclasses
 
-from tdx1min.tdx_cfg import WORK_DIR, BAR_PERIOD
+from tdx1min.tdx_cfg import BAR_PERIOD
 from tdx1min.vnlog import logi, loge, logw
 from tdx1min.trade_calendar import now_is_tradedate, cur_date
 
@@ -36,7 +36,8 @@ def read_cfg(path=None) -> Tuple[List[Tuple[int, str]], Dict[str, CfgItData]]:
 
 def read_cfg_file(full_file_path: str) -> Tuple[List[Tuple[int, str]], Dict[str, CfgItData]]:
     path = full_file_path
-    logi("path={}".format(path))
+    modify_datetime = datetime.datetime.fromtimestamp(Path(path).stat().st_mtime)
+    logi("read_cfg path={} modify_datetime={}".format(path, modify_datetime))
     codes = []
     cfg: Dict[str, CfgItData] = {}
     with open(path, "r") as fp:
@@ -53,7 +54,7 @@ def read_cfg_file(full_file_path: str) -> Tuple[List[Tuple[int, str]], Dict[str,
             cfg[code] = it
     logi("read_cfg code_num={}".format(len(codes)))
     logi("read_cfg codes={}".format(codes))
-    logi("read_cfg cfg={}".format(cfg))
+    # logi("read_cfg cfg={}".format(cfg))
     return codes, cfg
 
 
@@ -190,5 +191,6 @@ def day_bar_slots():
 
 if __name__ == '__main__':
     # print(day_bar_slots())
-    get_stg_path()
+    read_cfg_file(r'c:\ftp\params\Stgtrd_cfg.csv')
+    # get_stg_path()
     pass

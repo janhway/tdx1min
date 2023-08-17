@@ -198,5 +198,5 @@ if __name__ == "__main__":
     # get_local_machine_info()
     # get_file_times(r"c:\ftp\params\Stgtrd_cfg.csv")
     # get_file_times_x(r"c:\ftp\params\Stgtrd_cfg.csv")
-    dl_stg_result()
-    # dl_stg_cfg()
+    # dl_stg_result()
+    dl_stg_cfg()
