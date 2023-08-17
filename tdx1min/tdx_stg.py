@@ -6,9 +6,9 @@ from typing import List, Tuple, Dict, Any
 
 import dataclasses
 
-from tdx1min.tdx_cfg import BAR_PERIOD
+from tdx1min.tdx_cfg import BAR_PERIOD, WORK_DIR
 from tdx1min.vnlog import logi, loge, logw
-from tdx1min.trade_calendar import now_is_tradedate, cur_date
+from tdx1min.trade_calendar import now_is_tradedate, cur_date, IS_TEST_RUN
 
 
 @dataclasses.dataclass
@@ -95,9 +95,11 @@ def cal_open_close_new(slot: str, pre_tmap: float,
 
 
 def get_stg_path():
-    folder_path = Path(r"c:\ftp\stg")
-    # folder_path = Path(WORK_DIR)
-    # folder_path = folder_path.joinpath("stg")
+    if not IS_TEST_RUN:
+        folder_path = Path(r"c:\ftp\stg")
+    else:
+        folder_path = Path(WORK_DIR)
+        folder_path = folder_path.joinpath("stg")
     if not folder_path.exists():
         folder_path.mkdir(parents=True)
     print("get_stg_path, current path={} log_path={}".format(Path.cwd(), folder_path))
