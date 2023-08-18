@@ -261,6 +261,18 @@ def tst_tdx_reader():
 
 
 if __name__ == '__main__':
+    api = TdxHq_API()
+    with api.connect(ip=HOST, port=7709, time_out=60):
+        # sc = api.get_security_count(0)
+        # print("sz security count={}".format(sc))
+        # sc = api.get_security_count(1)
+        # print("sh security count={}".format(sc))
+        #
+        # stock_list = api.get_security_list(0, 0)  # 深市从0开始
+        # print(len(stock_list), stock_list)
+        stock_list = api.get_security_list(1, 517)  # 沪市从517开始 ???
+        print(len(stock_list), stock_list)
+
     # ss = read_stocks()
     # print(len(ss),ss)
     # read_cfg()
@@ -270,7 +282,7 @@ if __name__ == '__main__':
     # tst_tdx03()
     # tst_tdx04()
     # tst_tdx05()
-    tst_tdx_reader()
+    # tst_tdx_reader()
     # print(day_1min_slots())
     # print(slot_from_servertime('10:18:30.486'))
     # print(slot_from_servertime('9:18:30.486'))

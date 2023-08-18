@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytz
 
-from tools.ftp import ftphelper
+from tools.ftp_helper import FtpHelper
 
 
 def get_local_machine_info():
@@ -106,7 +106,7 @@ def convert_utc_to_local(utc_time_string, local_timezone):
 # remote_path_str： 远程目录 比如 /params/
 # filename: 文件名
 def download_file(local_path_str, remote_path_str, filename):
-    ftp = ftphelper('106.14.134.228', 21)
+    ftp = FtpHelper('106.14.134.228', 21)
     ftp.login('ftpuser', 'FTP+python')
 
     remote_file = remote_path_str + filename
@@ -199,4 +199,5 @@ if __name__ == "__main__":
     # get_file_times(r"c:\ftp\params\Stgtrd_cfg.csv")
     # get_file_times_x(r"c:\ftp\params\Stgtrd_cfg.csv")
     # dl_stg_result()
-    dl_stg_cfg()
+    # dl_stg_cfg()
+    pass
