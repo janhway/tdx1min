@@ -36,6 +36,9 @@ def read_cfg(path=None) -> Tuple[List[Tuple[int, str]], Dict[str, CfgItData]]:
 
 def read_cfg_file(full_file_path: str) -> Tuple[List[Tuple[int, str]], Dict[str, CfgItData]]:
     path = full_file_path
+    if not os.path.exists(path):
+        loge("read_cfg path doesnot exist. path={} ".format(path))
+        return [], {}
     modify_datetime = datetime.datetime.fromtimestamp(Path(path).stat().st_mtime)
     logi("read_cfg path={} modify_datetime={}".format(path, modify_datetime))
     codes = []

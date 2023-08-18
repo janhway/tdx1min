@@ -1,6 +1,7 @@
 import sys
 import threading
 import time
+import traceback
 
 from tdx1min.tdx_bars import check_run_period, tdx_bar_main, set_run_state
 from tdx1min.vnlog import logi, loge
@@ -38,15 +39,19 @@ def stg_main():
             trading = check_run_period()
 
             # Start child process in trading period
-            if trading and child_thread is None:
-                logi("start child")
-                # 创建线程并设置为守护线程
-                child_thread = threading.Thread(target=tdx_bar_main, args=(stgtrd_cfg_path, output_path))
-                child_thread.daemon = True
-                child_thread.start()
-                logi("start child ok")
-            elif not trading and child_thread is not None:
-                if not child_thread.is_alive():
+            if trading:
+                if child_thread is None:
+                    logi("start child")
+                    # 创建线程并设置为守护线程
+                    child_thread = threading.Thread(target=tdx_bar_main, args=(stgtrd_cfg_path, output_path))
+                    child_thread.daemon = True
+                    child_thread.start()
+                    logi("start child ok")
+                elif not child_thread.is_alive():
+                    loge("child_thread {} quit unexpectedly.".format(child_thread.name))
+                    child_thread = None
+            elif not trading:
+                if child_thread and not child_thread.is_alive():
                     child_thread = None
                     logi("child stop ok")
 
@@ -54,11 +59,12 @@ def stg_main():
     except KeyboardInterrupt:
         logi("receive KeyboardInterrupt")
     except Exception as e:
-        loge("".format(e))
+        error_message = traceback.format_exc()
+        loge("Exception {}".format(error_message))
     finally:
         if child_thread is not None:
             set_run_state(False)
-            child_thread.join()
+            # child_thread.join()  daemon不需要join
             logi("finish waiting child")
         logi("main process quit.")
 

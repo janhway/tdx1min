@@ -3,6 +3,7 @@ import datetime
 import math
 import sys
 import time
+import traceback
 from typing import List, Tuple
 
 from pytdx.hq import TdxHq_API
@@ -197,6 +198,9 @@ def check_run_period():
 
 def tdx_bars(api_pool: ApiPool, stgtrd_cfg_path=None, output_path=None):
     mcodes, cfg = read_cfg(stgtrd_cfg_path)
+    if not mcodes:
+        return
+
     pre_tmap = cal_pre_tmap(cfg)
     valid_slots = day_bar_slots()
     logi("pre_tmap={} stock num={}".format(pre_tmap, len(mcodes)))
@@ -278,9 +282,12 @@ def tdx_bar_main(stgtrd_cfg_path=None, output_path=None):
 
     except KeyboardInterrupt:
         logi("receive KeyboardInterrupt")
-
+    except Exception as e:
+        error_message = traceback.format_exc()
+        loge("Exception {}".format(error_message))
+    finally:
+        api_pool.stop()
     logi("quit child process.")
-    api_pool.stop()
 
 
 def tst_query_barmin():
